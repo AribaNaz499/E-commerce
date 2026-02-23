@@ -1,15 +1,30 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useContext } from 'react';
 import { Image, Transformer, Group, Rect, Text } from 'react-konva';
 import useImage from 'use-image';
+import { CanvasContext } from '../context/CanvasContext';
 
 const URLImage = ({ el, isSelected, onSelect, onChange }) => {
-  // --- YE LINE CHANGE HUI HAI ---
-  // crossOrigin: 'anonymous' add karne se 'Tainted Canvas' error khatam ho jata hai
+  const { cropMode, setCropMode, activeTool, stageRef } = useContext(CanvasContext);
   const [img] = useImage(el.src, 'anonymous'); 
 
   const shapeRef = useRef();
   const trRef = useRef();
   const [isCropping, setIsCropping] = useState(false);
+
+  useEffect(() => {
+    if (isSelected && activeTool === 'crop') {
+      setIsCropping(true);
+    } else if (activeTool !== 'crop' && isCropping) {
+      setIsCropping(false);
+    }
+  }, [activeTool, isSelected]);
+
+  useEffect(() => {
+    if (!isSelected) {
+      setIsCropping(false);
+      setCropMode(false);
+    }
+  }, [isSelected]);
 
   useEffect(() => {
     if (img && (!el.crop || el.crop.width === 0)) {
@@ -61,6 +76,23 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         rotation: node.rotation()
       });
     }
+    
+    if (stageRef?.current) {
+      stageRef.current.batchDraw();
+    }
+  };
+
+  const handleApplyCrop = () => {
+    setIsCropping(false);
+    setCropMode(false);
+  };
+
+  
+  const handleDoubleClick = (e) => {
+    console.log('Double click detected'); 
+    e.cancelBubble = true;
+    setIsCropping(true);
+    setCropMode(true);
   };
 
   if (!img) return null;
@@ -88,9 +120,14 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         crop={el.crop}
         draggable={isSelected && !isCropping}
         onClick={onSelect}
-        onDblClick={() => setIsCropping(true)}
+        onTap={onSelect}
+        onDblClick={handleDoubleClick}
+        onDblTap={handleDoubleClick}  // 🔥 Important for mobile
         onTransformEnd={handleTransformEnd}
-        onDragEnd={(e) => onChange({ ...el, x: e.target.x(), y: e.target.y() })}
+        onDragEnd={(e) => {
+          onChange({ ...el, x: e.target.x(), y: e.target.y() });
+          if (stageRef?.current) stageRef.current.batchDraw();
+        }}
         rotation={el.rotation || 0}
       />
 
@@ -98,26 +135,53 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         <Transformer
           ref={trRef}
           keepRatio={!isCropping}
-          rotateEnabled={!isCropping} 
+          rotateEnabled={!isCropping}
+          resizeEnabled={true}
+          enabledAnchors={
+            isCropping 
+              ? ['top-left', 'top-right', 'bottom-left', 'bottom-right'] 
+              : ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'middle-left', 'middle-right', 'top-center', 'bottom-center']
+          }
           anchorFill={isCropping ? "#fbbf24" : "#ffffff"}
           anchorStroke={isCropping ? "#fbbf24" : "#3b82f6"}
+          borderStroke={isCropping ? "#fbbf24" : "#3b82f6"}
+          borderStrokeWidth={2}
+          anchorSize={8}
+          boundBoxFunc={(oldBox, newBox) => {
+            if (newBox.width < 10 || newBox.height < 10) {
+              return oldBox;
+            }
+            return newBox;
+          }}
+          ignoreStroke={true}
         />
       )}
 
       {isCropping && (
-        <Group onClick={() => setIsCropping(false)} style={{ cursor: 'pointer' }}>
+        <Group 
+          onClick={handleApplyCrop}
+          onTap={handleApplyCrop}
+          x={el.x}
+          y={el.y + el.height + 15}
+          listening={true}
+        >
           <Rect
-            x={el.x} y={el.y + el.height + 15}
-            width={100} height={32}
-            fill="#fbbf24" cornerRadius={6}
-            shadowBlur={5} shadowColor="#00000033"
+            width={100}
+            height={32}
+            fill="#fbbf24"
+            cornerRadius={6}
+            shadowBlur={5}
+            shadowColor="#00000033"
           />
           <Text
-            x={el.x} y={el.y + el.height + 15}
-            width={100} height={32}
-            text="APPLY CROP" fill="black"
-            align="center" verticalAlign="middle"
-            fontStyle="bold" fontSize={12}
+            width={100}
+            height={32}
+            text="APPLY CROP"
+            fill="black"
+            align="center"
+            verticalAlign="middle"
+            fontStyle="bold"
+            fontSize={12}
           />
         </Group>
       )}
