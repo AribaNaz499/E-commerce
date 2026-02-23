@@ -91,83 +91,80 @@ const NewProduct = () => {
     <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans">
 
       {/* Navbar */}
-      <div className="bg-white border-b shadow-sm flex-shrink-0">
-        <div className="flex items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <Menu size={20} />
-            </button>
-            <button
-              onClick={() => navigate('/all-products')}
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <input
-              value={designName}
-              onChange={(e) => setDesignName(e.target.value)}
-              className="font-semibold outline-none border-b border-transparent focus:border-blue-300 px-1"
-              placeholder="Design Name"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="hidden md:flex bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => setOrientation("portrait")}
-                className={`p-2 rounded-md ${orientation === "portrait" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}
+      <div className="h-auto md:h-14 bg-white border-b flex flex-col md:flex-row justify-between items-center px-4 py-2 md:py-0 z-[100] shadow-sm gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <button 
+                onClick={() => setIsSidebarOpen(true)} 
+                className="md:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-700"
               >
-                <Smartphone size={16} />
+                <Menu size={22} />
               </button>
-              <button
-                onClick={() => setOrientation("landscape")}
-                className={`p-2 rounded-md ${orientation === "landscape" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}
+    
+              <button 
+                onClick={() => navigate('/all-products')} 
+                className="p-2 hover:bg-gray-100 rounded-full"
               >
-                <Monitor size={16} />
+                <ChevronLeft size={20} className="text-gray-600" />
               </button>
+              
+              <input
+                type="text"
+                value={designName}
+                onChange={(e) => setDesignName(e.target.value)}
+                className="font-bold text-gray-800 bg-transparent border-b border-transparent focus:border-blue-300 rounded px-2 py-1 w-full md:w-64 outline-none text-sm"
+                placeholder="Design Name"
+              />
             </div>
-
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="text-sm border rounded-lg bg-gray-50 px-2 py-1.5 outline-none"
-            >
-              <option value="Posters">Posters</option>
-              <option value="Logos">Logos</option>
-              <option value="Social Media">Social</option>
-              <option value="Kids Designs">Kids Designs</option>
-            </select>
-
-            <button
-              onClick={handlePublish}
-              disabled={loading}
-              className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"
-            >
-              {loading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
-              Publish
-            </button>
+    
+            <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+              <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                <button 
+                  onClick={() => setOrientation("portrait")} 
+                  className={`p-2 rounded-md transition-all ${
+                    orientation === "portrait" 
+                      ? 'bg-white shadow-sm text-blue-600' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title="Portrait Mode"
+                >
+                  <Smartphone size={14} />
+                </button>
+                <button 
+                  onClick={() => setOrientation("landscape")} 
+                  className={`p-2 rounded-md transition-all ${
+                    orientation === "landscape" 
+                      ? 'bg-white shadow-sm text-blue-600' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title="Landscape Mode"
+                >
+                  <Monitor size={14} />
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <select 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value)} 
+                  className="text-xs font-medium border-gray-200 rounded-lg bg-gray-50 px-2 py-1.5 outline-none hover:bg-white"
+                >
+                  <option value="Posters">Posters</option>
+                  <option value="Logos">Logos</option>
+                  <option value="Social Media">Social Media</option>
+                  <option value="Kids Designs">Kids Designs</option>
+                </select>
+                
+                <button 
+                  onClick={handlePublish} 
+                  disabled={loading} 
+                  className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 text-xs shadow-md disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />}
+                  {loading ? "Publishing..." : "Publish"}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-
-
-        <div className="md:hidden flex justify-center gap-2 pb-2 border-t pt-2">
-          <button
-            onClick={() => setOrientation("portrait")}
-            className={`px-3 py-1 rounded-md text-xs flex items-center gap-1 ${orientation === "portrait" ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
-          >
-            <Smartphone size={12} /> Portrait
-          </button>
-          <button
-            onClick={() => setOrientation("landscape")}
-            className={`px-3 py-1 rounded-md text-xs flex items-center gap-1 ${orientation === "landscape" ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
-          >
-            <Monitor size={12} /> Landscape
-          </button>
-        </div>
-      </div>
 
 
       <div className="flex-1 flex overflow-hidden">
