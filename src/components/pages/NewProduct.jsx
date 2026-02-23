@@ -29,7 +29,7 @@ const NewProduct = () => {
   const [loading, setLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  
+
   useEffect(() => {
     setElements([]);
     setCanvasBg("#ffffff");
@@ -47,9 +47,9 @@ const NewProduct = () => {
 
     try {
       const publishSize = getPublishDimensions();
-      
+
       let previewDataURL = "https://placehold.co/600x400";
-      
+
       if (stageRef?.current) {
         previewDataURL = stageRef.current.toDataURL({
           pixelRatio: 3,
@@ -61,7 +61,7 @@ const NewProduct = () => {
         elements,
         canvasBg,
         audio: audioFile,
-        config: { 
+        config: {
           orientation: orientation,
           dimensions: publishSize
         }
@@ -94,14 +94,14 @@ const NewProduct = () => {
       <div className="bg-white border-b shadow-sm flex-shrink-0">
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setIsSidebarOpen(true)} 
+            <button
+              onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
             >
               <Menu size={20} />
             </button>
-            <button 
-              onClick={() => navigate('/all-products')} 
+            <button
+              onClick={() => navigate('/all-products')}
               className="p-2 hover:bg-gray-100 rounded-full"
             >
               <ChevronLeft size={20} />
@@ -113,7 +113,7 @@ const NewProduct = () => {
               placeholder="Design Name"
             />
           </div>
-          
+
           <div className="flex items-center gap-2">
             <div className="hidden md:flex bg-gray-100 p-1 rounded-lg">
               <button
@@ -129,17 +129,18 @@ const NewProduct = () => {
                 <Monitor size={16} />
               </button>
             </div>
-            
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)} 
+
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               className="text-sm border rounded-lg bg-gray-50 px-2 py-1.5 outline-none"
             >
               <option value="Posters">Posters</option>
               <option value="Logos">Logos</option>
               <option value="Social Media">Social</option>
+              <option value="Kids Designs">Kids Designs</option>
             </select>
-            
+
             <button
               onClick={handlePublish}
               disabled={loading}
@@ -150,8 +151,8 @@ const NewProduct = () => {
             </button>
           </div>
         </div>
-        
-      
+
+
         <div className="md:hidden flex justify-center gap-2 pb-2 border-t pt-2">
           <button
             onClick={() => setOrientation("portrait")}
@@ -168,9 +169,9 @@ const NewProduct = () => {
         </div>
       </div>
 
-      
+
       <div className="flex-1 flex overflow-hidden">
-        
+
         <div className={`
           ${isSidebarOpen ? 'fixed inset-0 z-50 bg-white' : 'hidden'} 
           md:relative md:block md:w-[80px] md:bg-transparent
@@ -186,7 +187,7 @@ const NewProduct = () => {
         </div>
 
         {isSidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 md:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
