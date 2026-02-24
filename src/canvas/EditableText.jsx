@@ -9,7 +9,6 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
   const [tempText, setTempText] = useState(el.text);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
@@ -23,9 +22,34 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
     }
   }, [isSelected, isEditing]);
 
+  // Jab bhi el.text change ho, tempText update karo
+  useEffect(() => {
+    setTempText(el.text);
+  }, [el.text]);
+
+  // 🔥 YAHAN PE HANDLESAVE FUNCTION HAI - ISMEIN CODE ADD KARNA HAI
   const handleSave = () => {
-    onChange({ text: tempText });
+    // ✅ YEH CODE ADD KARO - Saari properties retain karo
+    onChange({
+      ...el,           // Saari purani properties (x, y, fontSize, fontFamily, fill, etc.)
+      text: tempText   // Sirf text update karo
+    });
     setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setTempText(el.text); // Wapas original text restore karo
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === 'Escape') {
+      handleCancel();
+    }
   };
 
   return (
@@ -34,7 +58,8 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
         ref={shapeRef}
         {...el}
         id={el.id}
-        visible={!(isEditing && isMobile)} // Mobile pe edit karte waqt canvas wala text chhupa do
+        text={el.text}  // Yahan el.text use karo, tempText nahi
+        visible={!(isEditing && isMobile)}
         draggable={!isEditing}
         onClick={onSelect}
         onTap={onSelect}
@@ -43,7 +68,11 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
           setIsEditing(true);
         }}
         onDragEnd={(e) => {
-          onChange({ x: e.target.x(), y: e.target.y() });
+          onChange({
+            ...el,
+            x: e.target.x(),
+            y: e.target.y()
+          });
         }}
       />
 
@@ -69,14 +98,25 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
                   autoFocus
                   value={tempText}
                   onChange={(e) => setTempText(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   style={{
                     width: '100%', height: '100px', padding: '10px', borderRadius: '8px',
                     border: '1px solid #ddd', fontSize: '16px', outline: 'none', marginBottom: '15px'
                   }}
                 />
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={handleSave} style={{ flex: 1, padding: '12px', background: '#7c3aed', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold' }}>Apply</button>
-                  <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#666', borderRadius: '8px', border: 'none' }}>Cancel</button>
+                  <button 
+                    onClick={handleSave} 
+                    style={{ flex: 1, padding: '12px', background: '#7c3aed', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold' }}
+                  >
+                    Apply
+                  </button>
+                  <button 
+                    onClick={handleCancel} 
+                    style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#666', borderRadius: '8px', border: 'none' }}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>
@@ -87,19 +127,26 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
               value={tempText}
               onChange={(e) => setTempText(e.target.value)}
               onBlur={handleSave}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) handleSave(); }}
+              onKeyDown={handleKeyDown}
               style={{
                 position: 'absolute',
                 top: el.y - 5,
                 left: el.x - 5,
-                fontSize: el.fontSize + 'px',
+                fontSize: (el.fontSize || 40) + 'px',
+                fontFamily: el.fontFamily || 'Arial',
                 width: 'auto',
-                minWidth: '100px',
+                minWidth: '200px',
+                maxWidth: '400px',
                 background: 'white',
-                border: '2px solid #3b82f6',
+                border: '2px solid #7c3aed',
+                borderRadius: '4px',
                 outline: 'none',
-                padding: '4px',
-                zIndex: 1000
+                padding: '8px',
+                zIndex: 1000,
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                resize: 'both',
+                overflow: 'auto',
+                lineHeight: '1.4'
               }}
             />
           )}

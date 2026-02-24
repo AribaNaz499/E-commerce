@@ -1,157 +1,119 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
 import { Stage, Layer, Rect } from "react-konva";
 import { CanvasContext } from '../../context/CanvasContext.jsx';
-import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer.jsx";
-import EditableText from "../../canvas/EditableText";
 import URLImage from "../../canvas/URLImage";
+import EditableText from "../../canvas/EditableText";
+import CanvasVideo from "../../canvas/CanvasVideo.jsx";
+import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer.jsx";
+// 🔥 Naya QR Code component import karein
+import CanvasQRCode from "../../canvas/CanvasQRCode.jsx"; 
 
 const CanvasArea = () => {
   const { 
-    elements, 
-    selectedId, 
-    setSelectedId,
-    audioFile,
-    isPlaying,
-    setIsPlaying,
-    setAudioFile,
-    canvasBg,
-    setElements,
-    orientation,
-    stageRef,
-    getPreviewDimensions
+    elements, selectedId, setSelectedId, updateElement,
+    audioFile, setAudioFile, videoFile, setVideoFile,
+    isAudioPlaying, setIsAudioPlaying,
+    canvasBg, stageRef, getPreviewDimensions, orientation 
   } = useContext(CanvasContext);
 
   const containerRef = useRef(null);
-  const [stageScale, setStageScale] = useState(1);
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
-  
+  const [scale, setScale] = useState(0.8);
+  const dims = getPreviewDimensions();
 
-  const currentSize = getPreviewDimensions();
-
-  
   useEffect(() => {
-    const updateScale = () => {
-      if (!containerRef.current) return;
-      
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      
-      
-      const scaleX = containerWidth / currentSize.width;
-      const scaleY = containerHeight / currentSize.height;
-      
-  
-      const newScale = Math.min(scaleX, scaleY, 1);
-      
-      setStageScale(newScale);
-      setStageSize({
-        width: currentSize.width * newScale,
-        height: currentSize.height * newScale
-      });
-    };
+    if (containerRef.current) {
+      const scaleX = (containerRef.current.offsetWidth - 40) / dims.width;
+      const scaleY = (containerRef.current.offsetHeight - 40) / dims.height;
+      setScale(Math.min(scaleX, scaleY, 1));
+    }
+  }, [orientation, dims]);
 
-    updateScale();
-    
-    
-    const timeoutId = setTimeout(updateScale, 100);
-    
-    window.addEventListener('resize', updateScale);
-    return () => {
-      window.removeEventListener('resize', updateScale);
-      clearTimeout(timeoutId);
-    };
-  }, [currentSize]);
-
-  const handleElementUpdate = (id, newAttrs) => {
-    setElements(prev => 
-      prev.map(el => el.id === id ? { ...el, ...newAttrs } : el)
-    );
+  const handleStageClick = (e) => {
+    if (e.target === e.target.getStage() || e.target.name() === 'background') {
+      setSelectedId(null);
+    }
   };
 
-  const safeElements = Array.isArray(elements) ? elements : [];
-
   return (
-    <div 
-      ref={containerRef}
-      className="w-full h-full flex items-center justify-center bg-[#f1f5f9]"
-      style={{ minHeight: '400px' }}
-    >
-      <div 
-        className="relative shadow-2xl rounded-xl overflow-hidden"
-        style={{ 
-          width: stageSize.width,
-          height: stageSize.height,
-        }}
-      >
+    <div ref={containerRef} className="flex-1 h-full bg-[#f1f5f9] flex items-center justify-center overflow-hidden">
+      <div className="shadow-2xl bg-white overflow-hidden" style={{ width: dims.width * scale, height: dims.height * scale }}>
         <Stage
           ref={stageRef}
-          width={currentSize.width}
-          height={currentSize.height}
-          scaleX={stageScale}
-          scaleY={stageScale}
-          onClick={(e) => {
-            if (e.target === e.target.getStage()) {
-              setSelectedId(null);
-            }
-          }}
-          onTap={(e) => {
-            if (e.target === e.target.getStage()) {
-              setSelectedId(null);
-            }
-          }}
+          width={dims.width}
+          height={dims.height}
+          scaleX={scale}
+          scaleY={scale}
+          onMouseDown={handleStageClick}
+          onTap={handleStageClick}
         >
           <Layer>
-          
-            <Rect
-              width={currentSize.width}
-              height={currentSize.height}
-              fill={canvasBg || '#ffffff'}
-              listening={false}
-            />
+            {/* 1. Background */}
+            <Rect width={dims.width} height={dims.height} fill={canvasBg} name="background" />
             
-            {safeElements.map((el) => {
-              if (!el || !el.type) return null;
-              
-              try {
-                if (el.type === 'text') {
-                  return (
-                    <EditableText
-                      key={el.id}
-                      el={el}
-                      isSelected={selectedId === el.id}
-                      onSelect={() => setSelectedId(el.id)}
-                      onChange={(newAttrs) => handleElementUpdate(el.id, newAttrs)}
-                    />
-                  );
-                }
+            {/* 2. Video Rendering */}
+            {videoFile && (
+              <CanvasVideo 
+                key={videoFile.id}
+                el={videoFile} 
+                videoUrl={videoFile.url} 
+                isSelected={selectedId === videoFile.id} 
+                onSelect={() => setSelectedId(videoFile.id)}
+                onChange={(updated) => setVideoFile(updated)}
+              />
+            )}
 
-                if (el.type === 'image') {
-                  return (
-                    <URLImage
-                      key={el.id}
-                      el={el}
-                      isSelected={selectedId === el.id}
-                      onSelect={() => setSelectedId(el.id)}
-                      onChange={(newAttrs) => handleElementUpdate(el.id, newAttrs)}
-                    />
-                  );
-                }
-              } catch (err) {
-                console.error('Error rendering element:', err);
-                return null;
+            {/* 3. Elements Mapping (Images, Stickers, Text, and QR Code) */}
+            {elements.map((el) => {
+              // --- QR CODE LOGIC ---
+              if (el.type === 'qrcode') {
+                return (
+                  <CanvasQRCode
+                    key={el.id}
+                    el={el}
+                    isSelected={selectedId === el.id}
+                    onSelect={() => setSelectedId(el.id)}
+                    onChange={updateElement}
+                  />
+                );
               }
 
+              // --- IMAGE & STICKER LOGIC ---
+              if (el.type === 'image' || el.type === 'sticker') {
+                return (
+                  <URLImage 
+                    key={el.id} 
+                    el={el} 
+                    isSelected={selectedId === el.id} 
+                    onSelect={() => setSelectedId(el.id)} 
+                    onChange={updateElement} 
+                  />
+                );
+              }
+
+              // --- TEXT LOGIC ---
+              if (el.type === 'text') {
+                return (
+                  <EditableText 
+                    key={el.id} 
+                    el={el} 
+                    isSelected={selectedId === el.id} 
+                    onSelect={() => setSelectedId(el.id)} 
+                    onChange={updateElement} 
+                  />
+                );
+              }
               return null;
             })}
 
+            {/* 4. Audio Rendering */}
             {audioFile && (
-              <CanvasAudioPlayer
+              <CanvasAudioPlayer 
                 audioData={audioFile}
                 isSelected={selectedId === audioFile.id}
                 onSelect={() => setSelectedId(audioFile.id)}
                 onChange={(updated) => setAudioFile(updated)}
-                isPlaying={isPlaying}
-                onTogglePlay={() => setIsPlaying(!isPlaying)}
+                isPlaying={isAudioPlaying}
+                onTogglePlay={() => setIsAudioPlaying(!isAudioPlaying)}
               />
             )}
           </Layer>

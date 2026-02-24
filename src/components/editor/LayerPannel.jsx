@@ -1,7 +1,7 @@
-
 import React, { useContext } from 'react';
 import { Trash2, MoveUp, MoveDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { CanvasContext } from '../../context/CanvasContext.jsx';
+
 const LayerPannel = () => {
   const { 
     selectedId, 
@@ -9,58 +9,58 @@ const LayerPannel = () => {
     elements, 
     setElements,
     audioFile,
-    setAudioFile
+    setAudioFile,
+      videoFile,       // <-- add video state
+    setVideoFile
   } = useContext(CanvasContext);
 
   if (!selectedId) return null;
 
-  
   const moveElement = (direction) => {
     if (!selectedId) return;
-    
+
     const index = elements.findIndex(el => el.id === selectedId);
     if (index === -1) return;
-    
+
     const newElements = [...elements];
-    
+
     if (direction === 'forward' && index < elements.length - 1) {
-      
       [newElements[index], newElements[index + 1]] = [newElements[index + 1], newElements[index]];
     } else if (direction === 'backward' && index > 0) {
-      
       [newElements[index], newElements[index - 1]] = [newElements[index - 1], newElements[index]];
     } else if (direction === 'toFront') {
-
-        const element = newElements.splice(index, 1)[0];
+      const element = newElements.splice(index, 1)[0];
       newElements.push(element);
     } else if (direction === 'toBack') {
-
-        const element = newElements.splice(index, 1)[0];
+      const element = newElements.splice(index, 1)[0];
       newElements.unshift(element);
     }
-    
+
     setElements(newElements);
   };
 
-  const handleDelete = () => {
-    if (selectedId === audioFile?.id) {
-      setAudioFile(null);
-    } else {
-      setElements(elements.filter(el => el.id !== selectedId));
-    }
-    setSelectedId(null);
-  };
+ const handleDelete = () => {
+  if (selectedId === audioFile?.id) {
+    setAudioFile(null);
+  } else if (selectedId === videoFile?.id) {
+    setVideoFile(null);   // <-- delete video
+  } else {
+    setElements(elements.filter(el => el.id !== selectedId));
+  }
+  setSelectedId(null);
+};
 
-  
+  // Find selected element (image/sticker/video) or audio
   const selectedElement = elements.find(el => el.id === selectedId) || 
                          (selectedId === audioFile?.id ? audioFile : null);
-  
+
+  // Determine type for label
   const elementType = selectedElement?.type || (selectedId === audioFile?.id ? 'audio' : 'unknown');
 
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-slate-200 px-4 py-3 rounded-2xl flex items-center gap-4 z-[200] animate-in fade-in zoom-in duration-200">
       
-      
+      {/* Element Type & Name */}
       <div className="flex items-center gap-2 border-r pr-4">
         <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
           {elementType}
@@ -69,8 +69,8 @@ const LayerPannel = () => {
           {selectedElement?.name || selectedElement?.text || selectedId?.slice(0, 8)}
         </span>
       </div>
-      
-    
+
+      {/* Layering Controls */}
       <div className="flex border-r pr-3 gap-1">
         <button
           onClick={() => moveElement('toFront')}
@@ -105,7 +105,7 @@ const LayerPannel = () => {
         </button>
       </div>
 
-      
+      {/* Delete Button */}
       <button
         onClick={handleDelete}
         className="bg-red-50 text-red-500 p-2.5 rounded-xl hover:bg-red-500 hover:text-white active:scale-95 transition-all duration-150"

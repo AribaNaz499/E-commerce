@@ -4,48 +4,56 @@ import useImage from 'use-image';
 import { CanvasContext } from '../context/CanvasContext';
 
 const URLImage = ({ el, isSelected, onSelect, onChange }) => {
-  const { cropMode, setCropMode, activeTool, stageRef } = useContext(CanvasContext);
-  const [img] = useImage(el.src, 'anonymous'); 
+  const { setCropMode, activeTool } = useContext(CanvasContext);
 
   const shapeRef = useRef();
   const trRef = useRef();
   const [isCropping, setIsCropping] = useState(false);
 
+  // Determine the image source for main and ghost
+  const imageSrc = el.type === 'sticker'
+    ? `data:image/svg+xml,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
+          <text x="250" y="250" font-size="300" font-family="Arial" text-anchor="middle" dominant-baseline="central">${el.text || ''}</text>
+        </svg>`)}`
+    : el.src || '';
+
+  // Load image once (for main and ghost)
+  const [image] = useImage(imageSrc, 'anonymous');
+
+  // Sync Crop Mode
   useEffect(() => {
     if (isSelected && activeTool === 'crop') {
       setIsCropping(true);
-    } else if (activeTool !== 'crop' && isCropping) {
-      setIsCropping(false);
-    }
-  }, [activeTool, isSelected]);
-
-  useEffect(() => {
-    if (!isSelected) {
+      setCropMode(true);
+    } else {
       setIsCropping(false);
       setCropMode(false);
     }
-  }, [isSelected]);
+  }, [activeTool, isSelected, setCropMode]);
 
+  // Initial Crop Setup
   useEffect(() => {
-    if (img && (!el.crop || el.crop.width === 0)) {
+    if (image && !el.crop) {
       onChange({
         ...el,
-        width: el.width || 200,
-        height: el.height || 200,
-        crop: { x: 0, y: 0, width: img.width, height: img.height }
+        crop: { x: 0, y: 0, width: image.width, height: image.height }
       });
     }
-  }, [img]);
+  }, [image]);
 
+  // Transformer binding
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
+      trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected, isCropping]);
 
   const handleTransformEnd = () => {
     const node = shapeRef.current;
+    if (!node) return;
+
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
 
@@ -54,10 +62,10 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
 
     if (isCropping) {
       const newCrop = {
-        x: el.crop.x + (node.x() - el.x) * (el.crop.width / el.width),
-        y: el.crop.y + (node.y() - el.y) * (el.crop.height / el.height),
-        width: el.crop.width * scaleX,
-        height: el.crop.height * scaleY,
+        x: (el.crop?.x || 0) + (node.x() - el.x) * ((el.crop?.width || el.width) / el.width),
+        y: (el.crop?.y || 0) + (node.y() - el.y) * ((el.crop?.height || el.height) / el.height),
+        width: Math.max(10, (el.crop?.width || el.width) * scaleX),
+        height: Math.max(10, (el.crop?.height || el.height) * scaleY),
       };
 
       onChange({
@@ -67,19 +75,32 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         y: node.y(),
       });
     } else {
+      const newWidth = Math.max(10, node.width() * scaleX);
+      const newHeight = Math.max(10, node.height() * scaleY);
+
       onChange({
         ...el,
         x: node.x(),
         y: node.y(),
-        width: Math.max(5, node.width() * scaleX),
-        height: Math.max(5, node.height() * scaleY),
-        rotation: node.rotation()
+        width: newWidth,
+        height: newHeight,
+        rotation: node.rotation() || 0,
       });
     }
-    
-    if (stageRef?.current) {
-      stageRef.current.batchDraw();
-    }
+  };
+
+  const handleDragEnd = (e) => {
+    onChange({ 
+      ...el, 
+      x: e.target.x(), 
+      y: e.target.y() 
+    });
+  };
+
+  const handleDoubleClick = (e) => {
+    e.cancelBubble = true;
+    setIsCropping(!isCropping);
+    setCropMode(!isCropping);
   };
 
   const handleApplyCrop = () => {
@@ -87,32 +108,41 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
     setCropMode(false);
   };
 
-  
-  const handleDoubleClick = (e) => {
-    console.log('Double click detected'); 
-    e.cancelBubble = true;
-    setIsCropping(true);
-    setCropMode(true);
-  };
-
-  if (!img) return null;
-
   return (
     <Group>
-      {isCropping && (
+      {/* 👻 GHOST IMAGE */}
+      {isCropping && image && (
         <Image
-          image={img}
-          x={el.x} y={el.y}
-          width={el.width} height={el.height}
+          image={image}
+          x={el.x}
+          y={el.y}
+          width={el.width}
+          height={el.height}
           opacity={0.2}
           listening={false}
         />
       )}
 
+      {/* 🟡 CROP OVERLAY */}
+      {isCropping && (
+        <Rect
+          x={el.x}
+          y={el.y}
+          width={el.crop?.width || el.width}
+          height={el.crop?.height || el.height}
+          stroke="#fbbf24"
+          strokeWidth={2}
+          dash={[5, 5]}
+          fill="transparent"
+          listening={false}
+        />
+      )}
+
+      {/* Main Image */}
       <Image
         id={el.id}
         ref={shapeRef}
-        image={img}
+        image={image}
         x={el.x}
         y={el.y}
         width={el.width}
@@ -122,65 +152,46 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         onClick={onSelect}
         onTap={onSelect}
         onDblClick={handleDoubleClick}
-        onDblTap={handleDoubleClick}  // 🔥 Important for mobile
+        onDblTap={handleDoubleClick}
         onTransformEnd={handleTransformEnd}
-        onDragEnd={(e) => {
-          onChange({ ...el, x: e.target.x(), y: e.target.y() });
-          if (stageRef?.current) stageRef.current.batchDraw();
-        }}
+        onDragEnd={handleDragEnd}
         rotation={el.rotation || 0}
       />
 
+      {/* Transformer */}
       {isSelected && (
         <Transformer
           ref={trRef}
           keepRatio={!isCropping}
           rotateEnabled={!isCropping}
-          resizeEnabled={true}
           enabledAnchors={
-            isCropping 
-              ? ['top-left', 'top-right', 'bottom-left', 'bottom-right'] 
-              : ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'middle-left', 'middle-right', 'top-center', 'bottom-center']
+            isCropping
+              ? ['top-left','top-right','bottom-left','bottom-right']
+              : ['top-left','top-right','bottom-left','bottom-right','middle-left','middle-right','top-center','bottom-center']
           }
-          anchorFill={isCropping ? "#fbbf24" : "#ffffff"}
-          anchorStroke={isCropping ? "#fbbf24" : "#3b82f6"}
-          borderStroke={isCropping ? "#fbbf24" : "#3b82f6"}
-          borderStrokeWidth={2}
-          anchorSize={8}
-          boundBoxFunc={(oldBox, newBox) => {
-            if (newBox.width < 10 || newBox.height < 10) {
-              return oldBox;
-            }
-            return newBox;
-          }}
-          ignoreStroke={true}
+          anchorFill={isCropping ? "#fbbf24" : "#8b5cf6"}
+          anchorStroke={isCropping ? "#fbbf24" : "#8b5cf6"}
+          borderStroke={isCropping ? "#fbbf24" : "#8b5cf6"}
         />
       )}
 
+      {/* Apply Crop Button */}
       {isCropping && (
-        <Group 
+        <Group
           onClick={handleApplyCrop}
           onTap={handleApplyCrop}
-          x={el.x}
-          y={el.y + el.height + 15}
+          x={el.x + (el.width / 2) - 50}
+          y={el.y + el.height + 20}
           listening={true}
         >
-          <Rect
-            width={100}
-            height={32}
-            fill="#fbbf24"
-            cornerRadius={6}
-            shadowBlur={5}
-            shadowColor="#00000033"
-          />
+          <Rect width={100} height={30} fill="#fbbf24" cornerRadius={4} />
           <Text
             width={100}
-            height={32}
+            height={30}
             text="APPLY CROP"
             fill="black"
             align="center"
             verticalAlign="middle"
-            fontStyle="bold"
             fontSize={12}
           />
         </Group>
