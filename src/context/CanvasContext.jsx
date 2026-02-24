@@ -70,23 +70,38 @@ export const CanvasProvider = ({ children }) => {
 const handleAudioUpload = async (file) => {
   if (!file) return;
 
+  const cloudName = "dzstsxrzc"; // Aapka cloud name
+  const uploadPreset = "my_audio_preset"; // Aapka unsigned preset
+
   try {
     // 1. Form Data taiyar karein
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "my_audio_preset"); // Jo aapne screenshot mein banaya
+    formData.append("upload_preset", uploadPreset);
+    
+    // 🔥 YEH LINE ZAROORI HAI: Cloudinary ko batane ke liye ke file audio/video kuch bhi ho sakti hai
+    formData.append("resource_type", "auto"); 
 
-    // 2. Apna Cloud Name yahan likhein
-    const cloudName = "APNA_CLOUD_NAME_YAHAN_LIKHEIN"; 
-
-    // Cloudinary API call (Audio ke liye 'video' endpoint use hota hai)
+    // 2. Cloudinary API call
+    // Note: 'auto/upload' use karna sabse safe hai audio files ke liye
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
-      { method: "POST", body: formData }
+      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+      { 
+        method: "POST", 
+        body: formData 
+      }
     );
 
     const data = await response.json();
 
+    // 3. Error Handling
+    if (!response.ok) {
+      console.error("Cloudinary Error Detail:", data);
+      alert(`Upload Failed: ${data.error.message}`);
+      return;
+    }
+
+    // 4. Success Logic
     if (data.secure_url) {
       const permanentUrl = data.secure_url;
 
@@ -95,7 +110,7 @@ const handleAudioUpload = async (file) => {
       setAudioFile({
         id: audioId,
         name: file.name,
-        url: permanentUrl,
+        url: permanentUrl, // Internet wala pakka link
         x: 50,
         y: 50
       });
@@ -105,22 +120,22 @@ const handleAudioUpload = async (file) => {
       const newQRCode = {
         id: qrId,
         type: 'qrcode',
-        link: permanentUrl, // Scan karte hi audio bajegi
+        link: permanentUrl, // Scan karne par ye link khulega
         x: 250,
         y: 50,
         width: 150,
         height: 150,
       };
 
-      // Stage par add karein
+      // Stage par elements add karein
       setElements((prev) => [...prev, newQRCode]);
       setSelectedId(qrId);
       
-      console.log("Audio live ho gaya!");
+      console.log("Audio live ho gaya aur QR generate ho gaya!");
     }
   } catch (error) {
-    console.error("Upload error:", error);
-    alert("Upload fail! Internet ya Cloud Name check karein.");
+    console.error("Network Error:", error);
+    alert("Connection issue! Please check your internet.");
   }
 };
 
