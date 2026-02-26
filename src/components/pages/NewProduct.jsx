@@ -62,55 +62,65 @@ const NewProduct = () => {
     setIsToolPanelOpen(false);
   }, [setElements, setCanvasBg, setAudioFile, setOrientation, setActiveTool, setIsSidebarOpen, setIsToolPanelOpen]);
 
-  const handlePublish = async () => {
-    if (!designName.trim()) {
-      alert("Please enter a design name");
-      return;
+const handlePublish = async () => {
+  if (!designName.trim()) {
+    alert("Please enter a design name");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const publishSize = getPublishDimensions();
+
+    let previewDataURL = "https://placehold.co/600x400";
+
+    if (stageRef?.current) {
+      previewDataURL = stageRef.current.toDataURL({
+        pixelRatio: 3,
+        mimeType: "image/png",
+      });
     }
 
-    setLoading(true);
-
-    try {
-      const publishSize = getPublishDimensions();
-
-      let previewDataURL = "https://placehold.co/600x400";
-
-      if (stageRef?.current) {
-        previewDataURL = stageRef.current.toDataURL({
-          pixelRatio: 3,
-          mimeType: 'image/png'
-        });
-      }
-
-      const designContent = {
-        elements,
-        canvasBg,
-        audio: audioFile,
-        config: {
-          orientation: orientation,
-          dimensions: publishSize
+    const cleanedElements = elements
+      .map((el) => {
+        if (el?.type === "video" && el?.url?.startsWith("blob:")) {
+          return null;
         }
-      };
+        return el;
+      })
+      .filter(Boolean);
 
-      const { error } = await supabase.from('products').insert([{
+    const designContent = {
+      elements: cleanedElements,
+      canvasBg,
+      audio: audioFile,
+      config: {
+        orientation,
+        dimensions: publishSize,
+      },
+    };
+
+    const { error } = await supabase.from("products").insert([
+      {
         name: designName,
         content: designContent,
         category,
-        image_url: previewDataURL
-      }]);
+        image_url: previewDataURL,
+      },
+    ]);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      alert("Design Published Successfully! 🎉");
-      navigate('/all-products');
-
-    } catch (err) {
-      console.error("Publish Error:", err);
-      alert("Save Error: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    alert("Design Published Successfully! 🎉");
+    navigate("/all-products");
+  } catch (err) {
+    console.error("Publish Error:", err);
+    alert("Save Error: " + err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans">
