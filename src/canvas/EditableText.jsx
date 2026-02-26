@@ -7,13 +7,7 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
   const trRef = useRef();
   const [isEditing, setIsEditing] = useState(false);
   const [tempText, setTempText] = useState(el.text);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     if (isSelected && trRef.current && !isEditing) {
@@ -22,23 +16,29 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
     }
   }, [isSelected, isEditing]);
 
-  // Jab bhi el.text change ho, tempText update karo
   useEffect(() => {
     setTempText(el.text);
   }, [el.text]);
 
-  // 🔥 YAHAN PE HANDLESAVE FUNCTION HAI - ISMEIN CODE ADD KARNA HAI
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditing]);
+
   const handleSave = () => {
-    // ✅ YEH CODE ADD KARO - Saari properties retain karo
-    onChange({
-      ...el,           // Saari purani properties (x, y, fontSize, fontFamily, fill, etc.)
-      text: tempText   // Sirf text update karo
-    });
+    if (tempText.trim() !== '') {
+      onChange({
+        ...el,
+        text: tempText
+      });
+    }
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setTempText(el.text); // Wapas original text restore karo
+    setTempText(el.text);
     setIsEditing(false);
   };
 
@@ -52,21 +52,24 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
     }
   };
 
+  const handleDoubleClick = (e) => {
+    e.cancelBubble = true;
+    setTempText(el.text);
+    setIsEditing(true);
+  };
+
   return (
     <>
       <KonvaText
         ref={shapeRef}
         {...el}
         id={el.id}
-        text={el.text}  // Yahan el.text use karo, tempText nahi
-        visible={!(isEditing && isMobile)}
+        text={el.text}
         draggable={!isEditing}
         onClick={onSelect}
         onTap={onSelect}
-        onDblClick={() => {
-          setTempText(el.text);
-          setIsEditing(true);
-        }}
+        onDblClick={handleDoubleClick}
+        onDblTap={handleDoubleClick}  
         onDragEnd={(e) => {
           onChange({
             ...el,
@@ -77,79 +80,67 @@ const EditableText = ({ el, isSelected, onSelect, onChange }) => {
       />
 
       {isSelected && !isEditing && (
-        <Transformer ref={trRef} keepRatio={true} />
+        <Transformer 
+          ref={trRef} 
+          keepRatio={true}
+          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+          boundBoxFunc={(oldBox, newBox) => {
+            if (newBox.width < 20 || newBox.height < 20) {
+              return oldBox;
+            }
+            return newBox;
+          }}
+        />
       )}
 
       {isEditing && (
         <Html>
-          {isMobile ? (
-            /* --- MOBILE VIEW: FULL MODAL --- */
-            <div style={{
-              position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-              backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', zIndex: 9999, pointerEvents: 'auto'
-            }}>
-              <div style={{
-                backgroundColor: 'white', padding: '20px', borderRadius: '16px',
-                width: '85%', maxWidth: '350px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
-              }}>
-                <h3 style={{ marginBottom: '10px', fontSize: '18px', fontFamily: 'sans-serif' }}>Edit Text</h3>
-                <textarea
-                  autoFocus
-                  value={tempText}
-                  onChange={(e) => setTempText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  style={{
-                    width: '100%', height: '100px', padding: '10px', borderRadius: '8px',
-                    border: '1px solid #ddd', fontSize: '16px', outline: 'none', marginBottom: '15px'
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button 
-                    onClick={handleSave} 
-                    style={{ flex: 1, padding: '12px', background: '#7c3aed', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold' }}
-                  >
-                    Apply
-                  </button>
-                  <button 
-                    onClick={handleCancel} 
-                    style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#666', borderRadius: '8px', border: 'none' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* --- DESKTOP VIEW: SIMPLE OVERLAY --- */
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 9999
+            }}
+          >
             <textarea
-              autoFocus
+              ref={textareaRef}
               value={tempText}
               onChange={(e) => setTempText(e.target.value)}
               onBlur={handleSave}
               onKeyDown={handleKeyDown}
               style={{
                 position: 'absolute',
-                top: el.y - 5,
                 left: el.x - 5,
-                fontSize: (el.fontSize || 40) + 'px',
-                fontFamily: el.fontFamily || 'Arial',
+                top: el.y - 5,
                 width: 'auto',
                 minWidth: '200px',
-                maxWidth: '400px',
+                maxWidth: 'min(400px, 80vw)',
+                minHeight: '60px',
+                fontSize: `${el.fontSize || 40}px`,
+                fontFamily: el.fontFamily || 'Arial',
+                color: el.fill || '#000000',
                 background: 'white',
-                border: '2px solid #7c3aed',
-                borderRadius: '4px',
+                border: '3px solid #7c3aed',
+                borderRadius: '8px',
                 outline: 'none',
-                padding: '8px',
-                zIndex: 1000,
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                padding: '12px',
+                boxShadow: '0 10px 25px rgba(124, 58, 237, 0.2)',
                 resize: 'both',
                 overflow: 'auto',
-                lineHeight: '1.4'
+                lineHeight: '1.4',
+                pointerEvents: 'auto',
+                zIndex: 10000,
+                WebkitAppearance: 'none',
+                appearance: 'none',
+                transform: 'translateZ(0)',
+                WebkitTransform: 'translateZ(0)'
               }}
             />
-          )}
+          </div>
         </Html>
       )}
     </>

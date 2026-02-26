@@ -1,1 +1,17 @@
 @import 'tailwindcss';
+
+@media (max-width: 768px) {
+  .fixed.md\:relative {
+    position: fixed;
+  }
+  
+  .z-\[100\] {
+    z-index: 100;
+  }
+}
+
+.transition-transform {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}

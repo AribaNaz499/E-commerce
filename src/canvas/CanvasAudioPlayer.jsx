@@ -20,13 +20,11 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
     // 1. Stop propagation to prevent drag/select
     e.cancelBubble = true;
     
-    // 2. Stop Konva from starting a drag sequence
     if (e.evt) {
       e.evt.preventDefault();
       e.evt.stopPropagation();
     }
     
-    // 3. Reset cursor immediately to avoid "sticking"
     const stage = e.target.getStage();
     if (stage) {
       stage.container().style.cursor = 'default';
@@ -89,15 +87,15 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
           strokeWidth={2}
         />
 
-        {/* Play/Pause Button - WITH FIXES */}
+       
        <Group 
   x={8}
   y={8}
 
-  // STOP DRAG BEFORE IT STARTS
+ 
   onMouseDown={(e) => {
     e.cancelBubble = true;
-    shapeRef.current.stopDrag();   // stop parent drag
+    shapeRef.current.stopDrag();  
   }}
 
   onTouchStart={(e) => {
@@ -133,7 +131,7 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
             x={isPlaying ? 10 : 13}
             y={8}
             fontStyle="bold"
-            listening={false} // Prevents text from catching events
+            listening={false}
           />
         </Group>
 

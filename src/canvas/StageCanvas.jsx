@@ -11,11 +11,11 @@ const StageCanvas = ({ width, height }) => {
     selectedId, 
     setSelectedId, 
     canvasBg, 
-    stageRef  //canvas ko save kr skte ya image export
+    stageRef  
   } = useContext(CanvasContext);
 
   const handleStageClick = (e) => {
-    // Stage ya background par click ho toh selection khatam kar do
+   
     const isStage = e.target === e.target.getStage();
     const isBackground = e.target.name() === 'canvas-bg';
     if (isStage || isBackground) {
@@ -40,7 +40,7 @@ const StageCanvas = ({ width, height }) => {
           fill={canvasBg || '#ffffff'} 
         />
 
-        {/* 2. Elements Mapping */}
+        
         {elements.map((el) => {
           if (el.type === 'text') {
             return (

@@ -10,7 +10,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
   const trRef = useRef();
   const [isCropping, setIsCropping] = useState(false);
 
-  // Determine the image source for main and ghost
+  
   const imageSrc = el.type === 'sticker'
     ? `data:image/svg+xml,${encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
@@ -18,7 +18,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         </svg>`)}`
     : el.src || '';
 
-  // Load image once (for main and ghost)
+  
   const [image] = useImage(imageSrc, 'anonymous');
 
   // Sync Crop Mode
@@ -32,7 +32,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
     }
   }, [activeTool, isSelected, setCropMode]);
 
-  // Initial Crop Setup
+  
   useEffect(() => {
     if (image && !el.crop) {
       onChange({
@@ -42,7 +42,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
     }
   }, [image]);
 
-  // Transformer binding
+  
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
@@ -110,7 +110,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
 
   return (
     <Group>
-      {/* 👻 GHOST IMAGE */}
+    
       {isCropping && image && (
         <Image
           image={image}
@@ -123,7 +123,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         />
       )}
 
-      {/* 🟡 CROP OVERLAY */}
+      
       {isCropping && (
         <Rect
           x={el.x}
@@ -138,7 +138,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         />
       )}
 
-      {/* Main Image */}
+     
       <Image
         id={el.id}
         ref={shapeRef}
@@ -158,7 +158,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         rotation={el.rotation || 0}
       />
 
-      {/* Transformer */}
+      
       {isSelected && (
         <Transformer
           ref={trRef}
@@ -175,7 +175,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         />
       )}
 
-      {/* Apply Crop Button */}
+  
       {isCropping && (
         <Group
           onClick={handleApplyCrop}

@@ -26,7 +26,7 @@ const Analytics = () => {
     
    <div className="w-full bg-white rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 shadow-sm border border-gray-100">
   
-  {/* Header: Compact padding and gap */}
+
   <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
     <div className="w-full sm:w-auto">
       <div className="flex gap-4 md:gap-6">
@@ -52,7 +52,7 @@ const Analytics = () => {
       </div>
     </div>
     
-    {/* Filter Options: Smaller text for compact look */}
+    
     <div className="flex gap-2 text-[10px] font-bold text-gray-400">
       <button className="px-2 py-1 hover:text-gray-800 transition-colors">Day</button>
       <button className="px-2 py-1 text-gray-900 border-b-2 border-gray-900">Week</button>
@@ -60,7 +60,7 @@ const Analytics = () => {
     </div>
   </div>
 
-  {/* Chart Section: Reduced Height */}
+
   <div className="h-[200px] sm:h-[240px] lg:h-[280px] w-full">
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
@@ -87,7 +87,7 @@ const Analytics = () => {
           tickLine={false} 
           tick={{fill: '#cbd5e1', fontSize: 10}}
           domain={[0, 500]}
-          ticks={[0, 250, 500]} // Fewer ticks for cleaner look
+          ticks={[0, 250, 500]} 
           tickFormatter={(value) => `$${value}`}
         />
         

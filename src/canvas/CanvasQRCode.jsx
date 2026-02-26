@@ -1,63 +1,116 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Image, Transformer, Group, Rect } from 'react-konva';
-import { QRCodeCanvas } from 'qrcode.react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useRef, useState } from "react";
+import { Image, Transformer } from "react-konva";
+import QRCode from 'qrcode';
 
 const CanvasQRCode = ({ el, isSelected, onSelect, onChange }) => {
   const shapeRef = useRef();
   const trRef = useRef();
-  const [qrImage, setQrImage] = useState(null);
+  const [imageNode, setImageNode] = useState(null);
 
+  
+  const getMediaType = (url) => {
+    if (url.includes('.mp4') || url.includes('.webm') || url.includes('.ogg')) {
+      return 'video';
+    } else if (url.includes('.mp3') || url.includes('.wav') || url.includes('.m4a')) {
+      return 'audio';
+    }
+    return 'link';
+  };
+
+  
+  const getOptimizedLink = (url) => {
+    const mediaType = getMediaType(url);
+    
+    
+    if (mediaType === 'video' || mediaType === 'audio') {
+      
+      return url;
+      
+     
+    }
+    
+    return url;
+  };
+
+  
   useEffect(() => {
-    const generateQR = () => {
-      const canvas = document.getElementById(`hidden-qr-${el.id}`);
-      if (canvas && canvas instanceof HTMLCanvasElement) {
+    if (!el.link) return;
+
+    const generateQRCode = async () => {
+      try {
+        const qrLink = getOptimizedLink(el.link);
+        
+       
+        const qrDataUrl = await QRCode.toDataURL(qrLink, {
+          width: 300,
+          margin: 2,
+          errorCorrectionLevel: 'H', 
+          color: {
+            dark: '#000000',  
+            light: '#ffffff'  
+          }
+        });
+
+        
         const img = new window.Image();
-        img.src = canvas.toDataURL();
-        img.onload = () => setQrImage(img);
+        img.src = qrDataUrl;
+        img.onload = () => {
+          setImageNode(img);
+        };
+      } catch (error) {
+        console.error("QR Code generation failed:", error);
       }
     };
-    const timer = setTimeout(generateQR, 500);
-    return () => clearTimeout(timer);
-  }, [el.link, el.id]);
+
+    generateQRCode();
+  }, [el.link]);
 
   useEffect(() => {
-    if (isSelected && trRef.current && shapeRef.current) {
+    if (isSelected && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer()?.batchDraw();
+      trRef.current.getLayer().batchDraw();
     }
   }, [isSelected]);
 
+  if (!imageNode) return null;
+
   return (
     <>
-      {/* ⚠️ YEH HISSA STAGE SE BAHAR JAYEGA (NO MORE ERRORS) */}
-      {createPortal(
-        <div style={{ position: 'absolute', top: -5000, left: -5000, opacity: 0 }}>
-          <QRCodeCanvas id={`hidden-qr-${el.id}`} value={el.link || ""} size={256} />
-        </div>,
-        document.body
-      )}
-
-      {/* KONVA SIRF TASVEER DIKHAYEGA */}
-      <Group
-        ref={shapeRef}
+      <Image
+        image={imageNode}
         x={el.x}
         y={el.y}
+        width={el.width || 150}
+        height={el.height || 150}
         draggable
         onClick={onSelect}
         onTap={onSelect}
-        onDragEnd={(e) => onChange({ ...el, x: e.target.x(), y: e.target.y() })}
-      >
-        {qrImage ? (
-          <Image image={qrImage} width={el.width || 120} height={el.height || 120} />
-        ) : (
-          <Rect width={120} height={120} fill="#f3f4f6" stroke="#ccc" />
-        )}
-      </Group>
-
-      {isSelected && (
-        <Transformer ref={trRef} rotateEnabled={false} keepRatio={true} />
-      )}
+        ref={shapeRef}
+        onDragEnd={(e) => {
+          onChange({
+            ...el,
+            x: e.target.x(),
+            y: e.target.y(),
+          });
+        }}
+        onTransformEnd={() => {
+          const node = shapeRef.current;
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
+          
+          onChange({
+            ...el,
+            x: node.x(),
+            y: node.y(),
+            width: Math.max(20, node.width() * scaleX),
+            height: Math.max(20, node.height() * scaleY),
+          });
+          
+          node.scaleX(1);
+          node.scaleY(1);
+        }}
+      />
+      {isSelected && <Transformer ref={trRef} />}
     </>
   );
 };

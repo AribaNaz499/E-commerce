@@ -6,11 +6,10 @@ const Cards = () => {
 
     return (
         <>
-            {/* flex-wrap add kiya taake mobile pe cards niche move ho sakein */}
+            
             <div className='flex flex-wrap gap-5 p-5 justify-center md:justify-start mt-10'>
                 
-                {/* w-full mobile ke liye aur md:w-80 badi screens ke liye */}
-                {/* Pehla Card */}
+              
                 <div className='w-full md:w-80 h-40 bg-blue-50 rounded-xl shadow-sm '> 
                     <h3 className='font-bold mt-4 ml-4'>New Visits</h3>
                     <div className='flex items-center'>
@@ -37,7 +36,7 @@ const Cards = () => {
                     </div>
                 </div>
 
-                {/* Dusra Card */}
+            
                 <div className='w-full md:w-80 h-40 bg-cyan-50 rounded-xl shadow-sm'>
                      <h3 className='font-bold mt-4 ml-4'>New Visits</h3>
                     <div className='flex items-center'>
@@ -64,7 +63,7 @@ const Cards = () => {
                     </div>
                 </div>
 
-                {/* Tisra Card */}
+                
                 <div className='w-full md:w-80 h-40 bg-orange-50 rounded-xl shadow-sm'>
                      <h3 className='font-bold mt-4 ml-4'>New Visits</h3>
                     <div className='flex items-center'>

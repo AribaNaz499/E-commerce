@@ -1,11 +1,10 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
+import React, { useContext, useEffect, useState, useRef, useCallback } from "react";
 import { Stage, Layer, Rect } from "react-konva";
 import { CanvasContext } from '../../context/CanvasContext.jsx';
 import URLImage from "../../canvas/URLImage";
 import EditableText from "../../canvas/EditableText";
 import CanvasVideo from "../../canvas/CanvasVideo.jsx";
 import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer.jsx";
-// 🔥 Naya QR Code component import karein
 import CanvasQRCode from "../../canvas/CanvasQRCode.jsx"; 
 
 const CanvasArea = () => {
@@ -20,13 +19,30 @@ const CanvasArea = () => {
   const [scale, setScale] = useState(0.8);
   const dims = getPreviewDimensions();
 
-  useEffect(() => {
+  
+  const updateDimensions = useCallback(() => {
     if (containerRef.current) {
-      const scaleX = (containerRef.current.offsetWidth - 40) / dims.width;
-      const scaleY = (containerRef.current.offsetHeight - 40) / dims.height;
-      setScale(Math.min(scaleX, scaleY, 1));
+      const containerWidth = containerRef.current.offsetWidth - 40;
+      const containerHeight = containerRef.current.offsetHeight - 40;
+      
+      const scaleX = containerWidth / dims.width;
+      const scaleY = containerHeight / dims.height;
+      const newScale = Math.min(scaleX, scaleY, 1);
+      
+      setScale(newScale);
     }
-  }, [orientation, dims]);
+  }, [dims.width, dims.height]); 
+  useEffect(() => {
+    updateDimensions();
+    
+  
+    window.addEventListener('resize', updateDimensions);
+    
+   
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [updateDimensions]); 
 
   const handleStageClick = (e) => {
     if (e.target === e.target.getStage() || e.target.name() === 'background') {
@@ -34,9 +50,24 @@ const CanvasArea = () => {
     }
   };
 
+ 
+  const canvasWidth = dims.width * scale;
+  const canvasHeight = dims.height * scale;
+
   return (
-    <div ref={containerRef} className="flex-1 h-full bg-[#f1f5f9] flex items-center justify-center overflow-hidden">
-      <div className="shadow-2xl bg-white overflow-hidden" style={{ width: dims.width * scale, height: dims.height * scale }}>
+    <div 
+      ref={containerRef} 
+      className="flex-1 h-full bg-[#f1f5f9] flex items-center justify-center overflow-hidden p-4"
+    >
+      <div 
+        className="shadow-2xl bg-white overflow-hidden rounded-lg transition-all duration-300"
+        style={{ 
+          width: canvasWidth, 
+          height: canvasHeight,
+          maxWidth: '100%',
+          maxHeight: '100%'
+        }}
+      >
         <Stage
           ref={stageRef}
           width={dims.width}
@@ -47,10 +78,15 @@ const CanvasArea = () => {
           onTap={handleStageClick}
         >
           <Layer>
-            {/* 1. Background */}
-            <Rect width={dims.width} height={dims.height} fill={canvasBg} name="background" />
+          
+            <Rect 
+              width={dims.width} 
+              height={dims.height} 
+              fill={canvasBg} 
+              name="background" 
+            />
             
-            {/* 2. Video Rendering */}
+           
             {videoFile && (
               <CanvasVideo 
                 key={videoFile.id}
@@ -62,10 +98,9 @@ const CanvasArea = () => {
               />
             )}
 
-            {/* 3. Elements Mapping (Images, Stickers, Text, and QR Code) */}
+         
             {elements.map((el) => {
-              // --- QR CODE LOGIC ---
-              if (el.type === 'qrcode') {
+              if (el?.type === 'qrcode') {
                 return (
                   <CanvasQRCode
                     key={el.id}
@@ -77,8 +112,7 @@ const CanvasArea = () => {
                 );
               }
 
-              // --- IMAGE & STICKER LOGIC ---
-              if (el.type === 'image' || el.type === 'sticker') {
+              if (el?.type === 'image' || el?.type === 'sticker') {
                 return (
                   <URLImage 
                     key={el.id} 
@@ -90,8 +124,7 @@ const CanvasArea = () => {
                 );
               }
 
-              // --- TEXT LOGIC ---
-              if (el.type === 'text') {
+              if (el?.type === 'text') {
                 return (
                   <EditableText 
                     key={el.id} 
@@ -102,10 +135,11 @@ const CanvasArea = () => {
                   />
                 );
               }
+
               return null;
             })}
 
-            {/* 4. Audio Rendering */}
+            
             {audioFile && (
               <CanvasAudioPlayer 
                 audioData={audioFile}

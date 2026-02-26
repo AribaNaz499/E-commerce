@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // Location track karne ke liye
+import { Link, useLocation } from 'react-router-dom'; 
 import { LayoutGrid, ShoppingBag, PlusSquare, Menu, X, Layers } from 'lucide-react';
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation(); // Current path check karne ke liye
+  const location = useLocation();
 
   const links = [
     { icon: <Layers size={18} />, label: "Dashboard", path: "/" },
@@ -14,7 +14,7 @@ const Sidebar = () => {
 
   return (
     <div className="flex">
-      {/* --- Mobile Hamburger Button (Top Right) --- */}
+     
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className="lg:hidden fixed top-4 right-4 z-50 p-2 bg-blue-600 text-white rounded-lg shadow-lg active:scale-95 transition-transform"
@@ -22,13 +22,13 @@ const Sidebar = () => {
         {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
-      {/* --- Sidebar Container --- */}
+     
       <div className={`
         fixed lg:static z-40 w-64 h-screen bg-stone-50 border-r border-stone-200 flex flex-col transition-transform duration-300 ease-in-out
         ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
         
-        {/* Logo Section */}
+       
         <div className="p-6 flex items-center gap-3">
           <div className="bg-blue-600 p-2 rounded-xl text-white shadow-blue-200 shadow-lg">
             <LayoutGrid size={20} />
@@ -36,7 +36,7 @@ const Sidebar = () => {
           <span className="font-bold text-xl tracking-tight text-slate-800">CanvaAdmin</span>
         </div>
 
-        {/* Navigation Links */}
+     
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto no-scrollbar pb-10">
           <p className="text-gray-400 text-[10px] tracking-widest font-bold uppercase px-4 py-4">Main Menu</p>
           
@@ -47,7 +47,7 @@ const Sidebar = () => {
               <Link 
                 key={i} 
                 to={item.path}
-                onClick={() => setIsOpen(false)} // Mobile pe link click hote hi menu band
+                onClick={() => setIsOpen(false)} 
                 className={`flex items-center gap-3 w-full py-3 px-5 rounded-full transition-all duration-200 
                   ${isActive 
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
@@ -61,7 +61,7 @@ const Sidebar = () => {
           })}
         </nav>
 
-        {/* User Profile (Bottom Section - Optional) */}
+        
         <div className="p-4 border-t border-stone-200 bg-stone-100/50">
            <div className="flex items-center gap-3 px-2">
               <div className="w-8 h-8 rounded-full bg-blue-200" />
@@ -73,13 +73,13 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* --- Custom CSS for Scrollbar --- */}
+    
       <style jsx="true">{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* --- Mobile Overlay --- */}
+
       {isOpen && (
         <div 
           onClick={() => setIsOpen(false)} 
