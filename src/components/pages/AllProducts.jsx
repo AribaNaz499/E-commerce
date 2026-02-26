@@ -141,7 +141,7 @@ const AllProducts = () => {
                 </td>
                 <td className="px-6 py-4">
                   <div className="w-16 h-16 rounded bg-gray-100 border overflow-hidden flex items-center justify-center">
-                    <img src={product.image_url} alt="" className="max-w-full max-h-full object-contain" />
+                    <img src={product.image_url} alt="" className="w-full h-full object-cover" />
                   </div>
                 </td>
                 <td className="px-6 py-4 font-semibold text-slate-700">{product.name}</td>
@@ -167,7 +167,7 @@ const AllProducts = () => {
             <div key={product.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-lg bg-gray-50 border overflow-hidden flex-shrink-0 flex items-center justify-center">
-                  <img src={product.image_url} alt="" className="max-w-full max-h-full object-contain" />
+                  <img src={product.image_url} alt="" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-mono text-gray-400">#{String(product.id).slice(0, 8)}</p>
@@ -232,7 +232,8 @@ const AllProducts = () => {
           <img
             src={selectedProduct.image_url}
             alt="Preview"
-            className="max-h-full max-w-full object-contain rounded-xl shadow-lg bg-white"
+            // FIX: w-full h-full object-fill pore canvas py dikhane k liye
+            className="w-full h-full object-fill rounded-xl shadow-lg bg-white"
           />
         </div>
       </div>

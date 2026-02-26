@@ -43,7 +43,6 @@ const EditProduct = () => {
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    console.log("Active Tool changed:", activeTool);
     if (activeTool) {
       setIsToolPanelOpen(true);
     } else {
@@ -73,21 +72,14 @@ const EditProduct = () => {
           setCanvasBg(data.content.canvasBg || "#ffffff");
           setAudioFile(data.content.audio || null);
 
+          // FIX: Removing the blob filter so video elements stay in the array
           const rawElements = data.content.elements || [];
-          const fixedElements = rawElements
-            .filter((el) => el != null)
-            .map((el) => {
-              if (el?.type === "video" && el?.url?.startsWith("blob:")) {
-                return null;
-              }
-              return el;
-            })
-            .filter(Boolean);
+          const fixedElements = rawElements.filter((el) => el != null);
+          
           setFetching(false);
 
           setTimeout(() => {
             setElements(fixedElements);
-            console.log("Elements rendered on edit page");
           }, 100);
         } else {
           setFetching(false);
@@ -107,56 +99,50 @@ const EditProduct = () => {
     };
   }, [id, setElements, setCanvasBg, setAudioFile, setOrientation, setActiveTool, setIsSidebarOpen, setIsToolPanelOpen]);
 
- const handleUpdate = async () => {
-  setLoading(true);
-  try {
-    const publishSize = getPublishDimensions();
+  const handleUpdate = async () => {
+    setLoading(true);
+    try {
+      const publishSize = getPublishDimensions();
 
-    const previewDataURL = stageRef.current
-      ? stageRef.current.toDataURL({ pixelRatio: 2 })
-      : "";
+      const previewDataURL = stageRef.current
+        ? stageRef.current.toDataURL({ pixelRatio: 2 })
+        : "";
 
-    const cleanedElements = elements
-      .map((el) => {
-        if (el?.type === "video" && el?.url?.startsWith("blob:")) {
-          return null;
-        }
-        return el;
-      })
-      .filter(Boolean);
+      // FIX: Allowing all elements (including videos) to be saved
+      const cleanedElements = elements.filter(Boolean);
 
-    const { error } = await supabase
-      .from("products")
-      .update({
-        name: designName,
-        content: {
-          elements: cleanedElements,
-          canvasBg,
-          audio: audioFile,
-          config: {
-            orientation,
-            dimensions: publishSize,
+      const { error } = await supabase
+        .from("products")
+        .update({
+          name: designName,
+          content: {
+            elements: cleanedElements,
+            canvasBg,
+            audio: audioFile,
+            config: {
+              orientation,
+              dimensions: publishSize,
+            },
           },
-        },
-        category,
-        image_url: previewDataURL,
-      })
-      .eq("id", id);
+          category,
+          image_url: previewDataURL,
+        })
+        .eq("id", id);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    alert("Updated! 🎉");
-    navigate("/all-products");
-  } catch (err) {
-    console.error(err);
-    alert("Update Failed");
-  } finally {
-    setLoading(false);
-  }
-};
+      alert("Updated! 🎉");
+      navigate("/all-products");
+    } catch (err) {
+      console.error(err);
+      alert("Update Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans">
-
       <div className="h-auto md:h-14 bg-white border-b flex flex-col md:flex-row justify-between items-center px-4 py-2 md:py-0 z-50 shadow-sm gap-2">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <button
@@ -186,20 +172,14 @@ const EditProduct = () => {
           <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
             <button
               onClick={() => setOrientation("portrait")}
-              className={`p-2 rounded-md transition-all ${orientation === "portrait"
-                  ? 'bg-white shadow-sm text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-                }`}
+              className={`p-2 rounded-md transition-all ${orientation === "portrait" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Portrait Mode"
             >
               <Smartphone size={14} />
             </button>
             <button
               onClick={() => setOrientation("landscape")}
-              className={`p-2 rounded-md transition-all ${orientation === "landscape"
-                  ? 'bg-white shadow-sm text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-                }`}
+              className={`p-2 rounded-md transition-all ${orientation === "landscape" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               title="Landscape Mode"
             >
               <Monitor size={14} />
@@ -233,36 +213,24 @@ const EditProduct = () => {
       <div className="flex-1 flex overflow-hidden relative">
         {isSidebarOpen && (
           <>
-            <div
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
-              onClick={() => setIsSidebarOpen(false)}
-            />
-
+            <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />
             <div className="fixed left-0 top-0 h-full w-64 bg-white z-50 shadow-xl md:hidden">
               <div className="flex justify-between items-center p-4 border-b">
                 <h2 className="font-bold text-purple-700">Tools</h2>
-                <button
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                >
+                <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-gray-100 rounded-full">
                   <X size={20} />
                 </button>
               </div>
-              <div className="p-2">
-                <Sidebar />
-              </div>
+              <div className="p-2"><Sidebar /></div>
             </div>
           </>
         )}
-
 
         <div className="hidden md:block md:static z-40 h-full w-20">
           <Sidebar />
         </div>
 
-
         <div className="flex-1 flex flex-col min-w-0 relative">
-
           {fetching ? (
             <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-50">
               <Loader2 className="animate-spin text-blue-600" size={40} />
@@ -274,13 +242,11 @@ const EditProduct = () => {
           )}
         </div>
 
-
         {activeTool && !fetching && (
           <div className="hidden md:block md:static z-40 h-full w-80">
             <ToolPanel />
           </div>
         )}
-
 
         {activeTool && !fetching && (
           <div className="md:hidden fixed inset-0 z-50 bg-white overflow-auto pt-16">
@@ -303,47 +269,30 @@ const EditProduct = () => {
         )}
       </div>
 
-
       <LayerPannel />
-
 
       <input
         type="file"
         ref={imageInputRef}
         accept="image/*"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          console.log("🖼️ Image selected:", e.target.files?.[0]);
-          if (e.target.files?.[0]) {
-            handleImageUpload(e.target.files[0]);
-          }
-        }}
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
       />
 
       <input
         type="file"
         ref={videoInputRef}
         accept="video/*"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          console.log("🎬 Video selected:", e.target.files?.[0]);
-          if (e.target.files?.[0]) {
-            handleVideoUpload(e.target.files[0]);
-          }
-        }}
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])}
       />
 
       <input
         type="file"
         ref={audioInputRef}
         accept="audio/*"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          console.log("🎵 Audio selected:", e.target.files?.[0]);
-          if (e.target.files?.[0]) {
-            handleAudioUpload(e.target.files[0]);
-          }
-        }}
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && handleAudioUpload(e.target.files[0])}
       />
     </div>
   );
