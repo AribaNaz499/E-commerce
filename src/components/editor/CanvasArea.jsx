@@ -12,60 +12,63 @@ const CanvasArea = () => {
     elements, selectedId, setSelectedId, updateElement,
     audioFile, setAudioFile, videoFile, setVideoFile,
     isAudioPlaying, setIsAudioPlaying,
-    canvasBg, stageRef, getPreviewDimensions, orientation 
+    canvasBg, stageRef, getPreviewDimensions 
   } = useContext(CanvasContext);
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(0.8);
   const dims = getPreviewDimensions();
 
-  
   const updateDimensions = useCallback(() => {
     if (containerRef.current) {
-      const containerWidth = containerRef.current.offsetWidth - 40;
-      const containerHeight = containerRef.current.offsetHeight - 40;
+      // Mobile par 40px padding thori zyada ho sakti hai, 20px is better
+      const containerWidth = containerRef.current.offsetWidth - 20;
+      const containerHeight = containerRef.current.offsetHeight - 20;
       
       const scaleX = containerWidth / dims.width;
       const scaleY = containerHeight / dims.height;
-      const newScale = Math.min(scaleX, scaleY, 1);
       
+      // Scale ko 1 se zyada nahi hone dena taake quality kharab na ho
+      const newScale = Math.min(scaleX, scaleY, 1);
       setScale(newScale);
     }
   }, [dims.width, dims.height]); 
+
   useEffect(() => {
     updateDimensions();
-    
-  
     window.addEventListener('resize', updateDimensions);
+    // Orientation change (mobile rotate) handle karne ke liye
+    window.addEventListener('orientationchange', updateDimensions);
     
-   
     return () => {
       window.removeEventListener('resize', updateDimensions);
+      window.removeEventListener('orientationchange', updateDimensions);
     };
   }, [updateDimensions]); 
 
   const handleStageClick = (e) => {
-    if (e.target === e.target.getStage() || e.target.name() === 'background') {
+    // Mobile Fix: Check if clicked on empty space
+    const clickedOnEmpty = e.target === e.target.getStage() || e.target.name() === 'background';
+    if (clickedOnEmpty) {
       setSelectedId(null);
     }
   };
 
- 
   const canvasWidth = dims.width * scale;
   const canvasHeight = dims.height * scale;
 
   return (
     <div 
       ref={containerRef} 
-      className="flex-1 h-full bg-[#f1f5f9] flex items-center justify-center overflow-hidden p-4"
+      className="flex-1 h-full bg-[#f1f5f9] flex items-center justify-center overflow-hidden p-2 sm:p-4"
     >
       <div 
         className="shadow-2xl bg-white overflow-hidden rounded-lg transition-all duration-300"
         style={{ 
           width: canvasWidth, 
           height: canvasHeight,
-          maxWidth: '100%',
-          maxHeight: '100%'
+          // Mobile centering fix
+          touchAction: 'none' 
         }}
       >
         <Stage
@@ -74,19 +77,22 @@ const CanvasArea = () => {
           height={dims.height}
           scaleX={scale}
           scaleY={scale}
+          // Mouse events for Desktop
           onMouseDown={handleStageClick}
+          // Touch events for Mobile (Very Important)
           onTap={handleStageClick}
         >
           <Layer>
-          
+            {/* Background Rect - iska name 'background' selection clear karne ke kaam aata hai */}
             <Rect 
               width={dims.width} 
               height={dims.height} 
               fill={canvasBg} 
               name="background" 
+              onTap={() => setSelectedId(null)}
             />
             
-           
+            {/* 1. Video Layer */}
             {videoFile && (
               <CanvasVideo 
                 key={videoFile.id}
@@ -98,7 +104,7 @@ const CanvasArea = () => {
               />
             )}
 
-         
+            {/* 2. Elements Layer (QR, Images, Stickers, Text) */}
             {elements.map((el) => {
               if (el?.type === 'qrcode') {
                 return (
@@ -135,11 +141,10 @@ const CanvasArea = () => {
                   />
                 );
               }
-
               return null;
             })}
 
-            
+            {/* 3. Audio Layer (Top par rakha hai taake controls hamesha clickable hon) */}
             {audioFile && (
               <CanvasAudioPlayer 
                 audioData={audioFile}

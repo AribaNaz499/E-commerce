@@ -10,18 +10,14 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
   const trRef = useRef();
   const [isCropping, setIsCropping] = useState(false);
 
+  // Sticker logic
   const imageSrc = el.type === 'sticker' 
     ? `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500"><text x="250" y="250" font-size="300" font-family="Arial" text-anchor="middle" dominant-baseline="central">${el.text || ''}</text></svg>`)}`
     : el.src || '';
 
   const [image] = useImage(imageSrc, 'anonymous');
 
-  useEffect(() => {
-    if (image && !isSelected && !el.crop) {
-      onSelect(el.id);
-    }
-  }, [image]);
-
+  // Transformer node update
   useEffect(() => {
     if (isSelected && trRef.current) {
       const node = isCropping ? cropRectRef.current : shapeRef.current;
@@ -32,12 +28,11 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
     }
   }, [isSelected, isCropping]);
 
-  useEffect(() => {
-    if (!isSelected && isCropping) {
-      setIsCropping(false);
-      setCropMode(false);
-    }
-  }, [isSelected]);
+  // Mobile Selection Handler
+  const handleSelect = (e) => {
+    if (e) e.cancelBubble = true;
+    onSelect(el.id);
+  };
 
   const handleApplyCrop = (e) => {
     if (e) e.cancelBubble = true;
@@ -63,22 +58,13 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
     }
     setIsCropping(false);
     setCropMode(false);
-    onSelect(null); 
   };
 
-  const handleTransformEnd = () => {
-    const node = shapeRef.current;
-    if (!node) return;
-    onChange({
-      ...el,
-      x: node.x(),
-      y: node.y(),
-      width: Math.max(10, node.width() * node.scaleX()),
-      height: Math.max(10, node.height() * node.scaleY()),
-      rotation: node.rotation(),
-    });
-    node.scaleX(1);
-    node.scaleY(1);
+  const startCropping = (e) => {
+    if (e) e.cancelBubble = true;
+    setIsCropping(true);
+    setCropMode(true);
+    onChange({ ...el, tempCrop: { x: 0, y: 0, width: el.width, height: el.height } });
   };
 
   const displayCrop = (!isCropping && el.crop?._applied) ? el.crop : undefined;
@@ -90,7 +76,8 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
           {isCropping && (
             <Image 
               image={image} x={el.x} y={el.y} width={el.width} height={el.height} 
-              opacity={0.2} crop={displayCrop} listening={false} 
+              opacity={0.3} crop={displayCrop} listening={false} 
+              rotation={el.rotation || 0}
             />
           )}
 
@@ -102,41 +89,29 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
             crop={displayCrop}
             draggable={isSelected && !isCropping}
             visible={!isCropping}
-            onMouseDown={(e) => {
-              e.cancelBubble = true;
-              onSelect(el.id);
+            // Mobile and Desktop Selection
+            onClick={handleSelect}
+            onTap={handleSelect} 
+            // Double Tap for Mobile Cropping
+            onDblClick={startCropping}
+            onDblTap={startCropping} 
+            onTransformEnd={() => {
+              const node = shapeRef.current;
+              onChange({
+                ...el,
+                x: node.x(), y: node.y(),
+                width: Math.max(10, node.width() * node.scaleX()),
+                height: Math.max(10, node.height() * node.scaleY()),
+                rotation: node.rotation(),
+              });
+              node.scaleX(1); node.scaleY(1);
             }}
-            onDblClick={(e) => {
-              e.cancelBubble = true;
-              setIsCropping(true);
-              setCropMode(true);
-              onChange({ ...el, tempCrop: { x: 0, y: 0, width: el.width, height: el.height } });
-            }}
-            onTransformEnd={handleTransformEnd}
             onDragEnd={(e) => onChange({ ...el, x: e.target.x(), y: e.target.y() })}
             rotation={el.rotation || 0}
           />
-
-          {isCropping && el.tempCrop && (
-            <Image
-              image={image}
-              x={el.x + el.tempCrop.x}
-              y={el.y + el.tempCrop.y}
-              width={el.tempCrop.width}
-              height={el.tempCrop.height}
-              listening={false}
-              crop={{
-                x: (el.crop?.x || 0) + el.tempCrop.x * (image.naturalWidth / el.width),
-                y: (el.crop?.y || 0) + el.tempCrop.y * (image.naturalHeight / el.height),
-                width: el.tempCrop.width * (image.naturalWidth / el.width),
-                height: el.tempCrop.height * (image.naturalHeight / el.height),
-              }}
-            />
-          )}
         </>
       )}
 
-    
       {isCropping && (
         <Rect
           ref={cropRectRef}
@@ -145,7 +120,7 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
           width={el.tempCrop?.width || el.width}
           height={el.tempCrop?.height || el.height}
           stroke="#fbbf24"
-          strokeWidth={2}
+          strokeWidth={3} // Mobile pe thora mota stroke behtar dikhta hai
           draggable
           onDragEnd={(e) => {
             onChange({ ...el, tempCrop: { ...el.tempCrop, x: e.target.x() - el.x, y: e.target.y() - el.y } });
@@ -170,21 +145,30 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         <Transformer 
           ref={trRef} 
           rotateEnabled={!isCropping} 
-          keepRatio={!isCropping} 
+          keepRatio={!isCropping}
+          // Mobile Optimization: Resize handlers ko thora bara kar dein
+          anchorSize={window.innerWidth < 768 ? 15 : 10}
+          borderStroke="#8b5cf6"
+          anchorStroke="#8b5cf6"
+          anchorFill="white"
+          anchorCornerRadius={3}
         />
       )}
 
-      
       {isCropping && (
-        <Group x={el.x + (el.tempCrop?.x || 0)} y={el.y + (el.tempCrop?.y || 0) + (el.tempCrop?.height || el.height) + 5}>
+        <Group 
+          x={el.x + (el.tempCrop?.x || 0)} 
+          y={el.y + (el.tempCrop?.y || 0) + (el.tempCrop?.height || el.height) + 10}
+          onClick={handleApplyCrop}
+          onTap={handleApplyCrop}
+        >
           <Rect 
-            width={60} height={22} fill="#22c55e" cornerRadius={3} 
-            onClick={handleApplyCrop} 
-            onMouseDown={(e) => e.cancelBubble = true} 
+            width={80} height={30} fill="#22c55e" cornerRadius={5} 
+            shadowBlur={5} shadowOpacity={0.2}
           />
           <Text 
-            width={60} height={22} text="APPLY" fill="white" 
-            align="center" verticalAlign="middle" fontSize={10} fontStyle="bold" listening={false} 
+            width={80} height={30} text="APPLY" fill="white" 
+            align="center" verticalAlign="middle" fontSize={12} fontStyle="bold" listening={false} 
           />
         </Group>
       )}

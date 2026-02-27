@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Group, Rect, Transformer } from "react-konva";
-import { Text as KonvaText } from "react-konva";
+import { Group, Rect, Transformer, Text as KonvaText } from "react-konva";
 
 const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlaying, onTogglePlay }) => {
   const shapeRef = useRef();
@@ -15,22 +14,24 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
 
   const formatName = (name) => name?.length > 18 ? name.substring(0, 18) + "..." : name || "Audio";
 
-  // Play/Pause Click Handler - FIXED
+  // Audio Play/Pause Trigger
   const handlePlayPause = (e) => {
-    // 1. Stop propagation to prevent drag/select
-    e.cancelBubble = true;
-    
-    if (e.evt) {
-      e.evt.preventDefault();
-      e.evt.stopPropagation();
-    }
-    
-    const stage = e.target.getStage();
-    if (stage) {
-      stage.container().style.cursor = 'default';
+    // Propagation rokna zaroori hai taake element select ya drag na ho jaye
+    if (e) {
+      e.cancelBubble = true;
+      if (e.evt) {
+        e.evt.preventDefault();
+        e.evt.stopPropagation();
+      }
     }
 
+    // Mobile logic: Jab hum yahan onTogglePlay call karte hain, 
+    // toh parent component mein audio.play() call hona chahiye.
     onTogglePlay();
+
+    // Cursor reset
+    const stage = e.target.getStage();
+    if (stage) stage.container().style.cursor = 'default';
   };
 
   if (!audioData) return null;
@@ -45,17 +46,14 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
         rotation={audioData.rotation || 0}
         scaleX={audioData.scaleX || 1}
         scaleY={audioData.scaleY || 1}
-        draggable
-        onClick={onSelect}
-        onTap={onSelect}
-        // Cursor management for the whole group
-        onMouseEnter={(e) => {
-          const stage = e.target.getStage();
-          stage.container().style.cursor = 'move';
+        draggable={isSelected} // Sirf selected ho tabhi drag ho (mobile fix)
+        onClick={(e) => {
+          e.cancelBubble = true;
+          onSelect(audioData.id);
         }}
-        onMouseLeave={(e) => {
-          const stage = e.target.getStage();
-          stage.container().style.cursor = 'default';
+        onTap={(e) => {
+          e.cancelBubble = true;
+          onSelect(audioData.id);
         }}
         onDragEnd={(e) => {
           onChange({
@@ -76,6 +74,7 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
           });
         }}
       >
+        {/* Main Background */}
         <Rect
           width={180}
           height={50}
@@ -87,42 +86,23 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
           strokeWidth={2}
         />
 
-       
-       <Group 
-  x={8}
-  y={8}
-
- 
-  onMouseDown={(e) => {
-    e.cancelBubble = true;
-    shapeRef.current.stopDrag();  
-  }}
-
-  onTouchStart={(e) => {
-    e.cancelBubble = true;
-    shapeRef.current.stopDrag();
-  }}
-
-  onClick={(e) => {
-    e.cancelBubble = true;
-    onTogglePlay();
-  }}
-
-  onTap={(e) => {
-    e.cancelBubble = true;
-    onTogglePlay();
-  }}
-
-  onMouseEnter={(e) => {
-    const stage = e.target.getStage();
-    stage.container().style.cursor = "pointer";
-  }}
-
-  onMouseLeave={(e) => {
-    const stage = e.target.getStage();
-    stage.container().style.cursor = "move";
-  }}
->
+        {/* Play/Pause Button Group */}
+        <Group 
+          x={8}
+          y={8}
+          // Mobile touches ke liye events
+          onTap={handlePlayPause}
+          onClick={handlePlayPause}
+          // Button dabate waqt drag cancel karna
+          onMouseDown={(e) => {
+            e.cancelBubble = true;
+            if (shapeRef.current) shapeRef.current.stopDrag();
+          }}
+          onTouchStart={(e) => {
+            e.cancelBubble = true;
+            if (shapeRef.current) shapeRef.current.stopDrag();
+          }}
+        >
           <Rect width={34} height={34} fill="#3b82f6" cornerRadius={17} />
           <KonvaText
             text={isPlaying ? "⏸" : "▶"}
@@ -161,7 +141,8 @@ const CanvasAudioPlayer = ({ audioData, isSelected, onSelect, onChange, isPlayin
           enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
           anchorFill="white"
           anchorStroke="#3b82f6"
-          anchorSize={8}
+          // Mobile fix: anchor size baraya hai taake touch asaan ho
+          anchorSize={window.innerWidth < 768 ? 12 : 8}
           borderStroke="#3b82f6"
           boundBoxFunc={(oldBox, newBox) => {
             if (newBox.width < 100) return oldBox;

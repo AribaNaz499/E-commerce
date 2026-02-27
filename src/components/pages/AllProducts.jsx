@@ -82,7 +82,8 @@ const AllProducts = () => {
   }
 
   return (
-    <div className="p-3 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
+      
     
       <div className="p-5 sm:p-8 rounded-2xl shadow-sm border border-gray-100 bg-white mb-8">
         <div className="mb-6">
@@ -122,6 +123,7 @@ const AllProducts = () => {
         </div>
       </div>
 
+      
       <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-white">
         <table className="w-full text-left border-collapse">
           <thead className="bg-blue-600 text-white">
@@ -161,6 +163,7 @@ const AllProducts = () => {
         </table>
       </div>
 
+    
       <div className="grid grid-cols-1 gap-4 md:hidden">
         {filteredTemplates.length > 0 ? (
           filteredTemplates.map((product) => (
@@ -199,53 +202,62 @@ const AllProducts = () => {
         )}
       </div>
 
-    
-{isViewModal && selectedProduct && (
-  <div
-    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-    onClick={() => setIsViewModal(false)}
-  >
-    <div
-      className="bg-white rounded-3xl w-full max-w-4xl h-[90vh] shadow-2xl flex flex-col overflow-hidden"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex justify-between items-center px-6 py-4 border-b bg-white">
-        <div>
-          <h3 className="text-lg font-bold text-slate-800">
-            {selectedProduct.name || "Untitled Design"}
-          </h3>
-          <p className="text-xs text-gray-400 font-mono">
-            ID: {selectedProduct.id}
-          </p>
-        </div>
-
-        <button
+  
+      {isViewModal && selectedProduct && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-8"
           onClick={() => setIsViewModal(false)}
-          className="p-2 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
         >
-          <X size={22} />
-        </button>
-      </div>
+          <div
+            className="bg-white rounded-2xl w-full max-w-5xl h-full max-h-[90vh] shadow-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+          
+            <div className="flex justify-between items-center px-6 py-4 border-b bg-white">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 leading-tight">
+                  {selectedProduct.name || "Untitled Design"}
+                </h3>
+                <p className="text-[10px] text-gray-400 font-mono uppercase tracking-tighter">
+                  ID: {selectedProduct.id}
+                </p>
+              </div>
 
-      <div className="flex-1 bg-gray-100 flex items-center justify-center p-6 overflow-hidden">
-        <div className="w-full h-full flex items-center justify-center">
-          <img
-            src={selectedProduct.image_url}
-            alt="Preview"
-            // FIX: w-full h-full object-fill pore canvas py dikhane k liye
-            className="w-full h-full object-fill rounded-xl shadow-lg bg-white"
-          />
+              <button
+                onClick={() => setIsViewModal(false)}
+                className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+        
+            <div className="flex-1 bg-gray-100 flex items-center justify-center p-4 sm:p-10 overflow-hidden">
+              <div className="relative w-full h-full flex items-center justify-center">
+                <img
+                  src={selectedProduct.image_url}
+                  alt="Design Preview"
+                 
+                  className="max-w-full max-h-full object-cover rounded-md shadow-2xl bg-white transition-all duration-300"
+                />
+              </div>
+            </div>
+
+          
+            <div className="px-6 py-4 bg-white border-t flex items-center justify-between">
+              <span className="px-4 py-1.5 bg-blue-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest">
+                {selectedProduct.category || "General"}
+              </span>
+              <button 
+                onClick={() => handleEdit(selectedProduct.id)}
+                className="text-sm font-bold text-blue-600 hover:underline"
+              >
+                Edit Design
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="py-4 text-center bg-white border-t">
-        <span className="px-5 py-1 bg-blue-600 text-white rounded-full text-xs font-bold uppercase tracking-widest shadow-sm">
-          {selectedProduct.category || "General"}
-        </span>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 };
