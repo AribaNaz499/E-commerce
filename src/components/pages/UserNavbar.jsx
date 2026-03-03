@@ -1,9 +1,21 @@
 import { useState, useEffect } from "react";
-import { Search, User, Heart, ShoppingCart, Menu, X } from "lucide-react";
+import { Search, User, Heart, ShoppingCart, Menu, X, LogOut } from "lucide-react";
 import LogoImg from "../../assets/images/logo.png"; 
+import { supabase } from "../../supabase/client"; 
 
 const UserNavbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+  
+    } catch (error) {
+      console.error('Logout error:', error.message);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -73,6 +85,14 @@ const UserNavbar = () => {
             </span>
           </button>
 
+          <button 
+            onClick={handleLogout}
+            className="hover:text-red-600 transition-all"
+            title="Logout"
+          >
+            <LogOut size={18} />
+          </button>
+
           <button
             className="md:hidden"
             aria-label="Toggle menu"
@@ -98,9 +118,16 @@ const UserNavbar = () => {
           <a href="/contact" onClick={() => setIsMenuOpen(false)}>
             Contact
           </a>
+          <button 
+            onClick={handleLogout}
+            className="text-left text-red-600 font-bold mt-2 pt-2 border-t border-gray-100"
+          >
+            Logout
+          </button>
         </div>
       )}
     </div>
   );
 }
+
 export default UserNavbar;

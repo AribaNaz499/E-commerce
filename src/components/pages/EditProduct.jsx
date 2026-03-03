@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ChevronLeft, Loader2, Monitor, Smartphone, Menu, X } from 'lucide-react';
+import { Save, ChevronLeft, Loader2, Monitor, Smartphone, Menu } from 'lucide-react';
 import { CanvasContext } from "../../context/CanvasContext";
 import { supabase } from "../../supabase/client";
 import ToolPanel from "../editor/ToolPanel";
@@ -13,30 +13,14 @@ const EditProduct = () => {
   const navigate = useNavigate();
   const context = useContext(CanvasContext);
 
-  // Context check to prevent crash
   if (!context) return null;
 
   const {
-    elements,
-    setElements,
-    setCanvasBg,
-    setAudioFile,
-    audioFile,
-    canvasBg,
-    orientation,
-    setOrientation,
-    stageRef,
-    getPublishDimensions,
-    activeTool,
-    setActiveTool,
-    setIsSidebarOpen,
-    setIsToolPanelOpen,
-    imageInputRef,
-    videoInputRef,
-    audioInputRef,
-    handleImageUpload,
-    handleVideoUpload,
-    handleAudioUpload,
+    elements, setElements, setCanvasBg, setAudioFile, audioFile,
+    canvasBg, orientation, setOrientation, stageRef, getPublishDimensions,
+    activeTool, setActiveTool, setIsSidebarOpen, setIsToolPanelOpen,
+    imageInputRef, videoInputRef, audioInputRef, handleImageUpload,
+    handleVideoUpload, handleAudioUpload,
   } = context;
 
   const [designName, setDesignName] = useState("");
@@ -51,43 +35,27 @@ const EditProduct = () => {
   useEffect(() => {
     const loadDesign = async () => {
       if (!id) return;
-      
       setFetching(true);
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('id', id)
-          .single();
-
+        const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
         if (error) throw error;
-
         if (data) {
           setDesignName(data.name || "Untitled Design");
           setCategory(data.category || "Posters");
-
           if (data.content) {
-            if (data.content.config?.orientation) {
-              setOrientation(data.content.config.orientation);
-            }
+            if (data.content.config?.orientation) setOrientation(data.content.config.orientation);
             setCanvasBg(data.content.canvasBg || "#ffffff");
             setAudioFile(data.content.audio || null);
-
-            const rawElements = data.content.elements || [];
-            const fixedElements = rawElements.filter((el) => el != null);
-            setElements(fixedElements);
+            setElements(data.content.elements || []);
           }
         }
       } catch (err) {
         console.error("Fetch Error:", err.message);
       } finally {
-        // Chota sa delay taake canvas renders sahi se ho jayein
         setTimeout(() => setFetching(false), 500);
       }
     };
-
     loadDesign();
-
     return () => {
       setActiveTool(null);
       setElements([]); 
@@ -102,41 +70,38 @@ const EditProduct = () => {
 
     setLoading(true);
     try {
+      setActiveTool(null);
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const publishSize = getPublishDimensions ? getPublishDimensions() : { width: 1080, height: 1920 };
       
-      // PREVIEW CAPTURE FIX:
       let previewDataURL = "";
       if (stageRef.current) {
         previewDataURL = stageRef.current.toDataURL({
-          pixelRatio: 1, // Thumbnail ke liye 1 kaafi hai
+          pixelRatio: 1.5,
           mimeType: "image/png",
         });
       }
-
-      const cleanedElements = elements.filter(Boolean);
 
       const { error } = await supabase
         .from("products")
         .update({
           name: designName,
           content: {
-            elements: cleanedElements,
+            elements: elements.filter(Boolean),
             canvasBg,
             audio: audioFile,
-            config: {
-              orientation,
-              dimensions: publishSize,
-            },
+            config: { orientation, dimensions: publishSize },
           },
           category,
-          image_url: previewDataURL, // New Preview saved here
+          image_url: previewDataURL,
+         
         })
         .eq("id", id);
 
       if (error) throw error;
-      
       alert("Updated Successfully! 🎉");
-      // ROUTING FIX: Added leading slash
       navigate("/admin-portal/all-products");
       
     } catch (err) {
@@ -149,17 +114,12 @@ const EditProduct = () => {
 
   return (
     <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans">
-      {/* Header */}
       <div className="h-auto md:h-14 bg-white border-b flex flex-col md:flex-row justify-between items-center px-4 py-2 md:py-0 z-50 shadow-sm gap-2">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-700">
             <Menu size={22} />
           </button>
-          <button 
-            // ROUTING FIX: Added leading slash
-            onClick={() => navigate('/admin-portal/all-products')} 
-            className="p-2 hover:bg-gray-100 rounded-full"
-          >
+          <button onClick={() => navigate('/admin-portal/all-products')} className="p-2 hover:bg-gray-100 rounded-full">
             <ChevronLeft size={20} className="text-gray-600" />
           </button>
           <input
@@ -187,13 +147,8 @@ const EditProduct = () => {
         </div>
       </div>
 
-      {/* Main Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Editor Sidebar */}
-        <div className="hidden md:block w-20 border-r bg-white h-full">
-          <Sidebar />
-        </div>
-        
+        <div className="hidden md:block w-20 border-r bg-white h-full"><Sidebar /></div>
         <div className="flex-1 flex flex-col relative bg-[#f1f5f9] items-center justify-center">
           {fetching ? (
             <div className="absolute inset-0 flex items-center justify-center bg-white/90 z-50">
@@ -202,25 +157,15 @@ const EditProduct = () => {
                 <p className="text-sm text-gray-500 font-medium">Loading your design...</p>
               </div>
             </div>
-          ) : (
-             <CanvasArea />
-          )}
+          ) : <CanvasArea />}
         </div>
-
-        {/* Right Tool Panel */}
         {activeTool && !fetching && (
-          <div className="hidden md:block w-80 border-l bg-white h-full overflow-y-auto">
-            <ToolPanel />
-          </div>
+          <div className="hidden md:block w-80 border-l bg-white h-full overflow-y-auto"><ToolPanel /></div>
         )}
       </div>
 
       <LayerPannel />
-
-      {/* Hidden Uploaders */}
-      <input type="file" ref={imageInputRef} accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
-      <input type="file" ref={videoInputRef} accept="video/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} />
-      <input type="file" ref={audioInputRef} accept="audio/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleAudioUpload(e.target.files[0])} />
+      <input type="file" ref={imageInputRef} className="hidden" />
     </div>
   );
 };

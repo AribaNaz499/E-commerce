@@ -30,6 +30,10 @@ const AllProducts = () => {
     }
   };
 
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
   const deleteDesign = async (id) => {
     const confirmDelete = window.confirm("Did you really want to delete this design?");
     if (!confirmDelete) return;
@@ -52,6 +56,17 @@ const AllProducts = () => {
     }
   };
 
+  const getImageUrl = (product) => {
+    if (!product?.image_url) return 'https://placehold.co/400x600?text=No+Preview';
+    
+    if (product.image_url.startsWith('data:image')) {
+      return product.image_url;
+    }
+    
+    const time = product.updated_at ? new Date(product.updated_at).getTime() : new Date().getTime();
+    return `${product.image_url}?t=${time}`;
+  };
+
   const handleView = (product) => {
     setSelectedProduct(product);
     setIsViewModal(true);
@@ -60,10 +75,6 @@ const AllProducts = () => {
   const handleEdit = (id) => {
     navigate(`/admin-portal/edit/${id}`);
   };
-
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
 
   const filteredTemplates = templates.filter((t) => {
     const matchesSearch = (t.name || "").toLowerCase().includes(searchTerm.toLowerCase());
@@ -141,7 +152,12 @@ const AllProducts = () => {
                 </td>
                 <td className="px-6 py-4">
                   <div className="w-16 h-16 rounded bg-gray-100 border overflow-hidden flex items-center justify-center">
-                    <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                    <img 
+                      src={getImageUrl(product)} 
+                      alt="" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => { e.target.src = 'https://placehold.co/400x600?text=Error'; }}
+                    />
                   </div>
                 </td>
                 <td className="px-6 py-4 font-semibold text-slate-700">{product.name}</td>
@@ -161,13 +177,14 @@ const AllProducts = () => {
         </table>
       </div>
 
+     
       <div className="grid grid-cols-1 gap-4 md:hidden">
         {filteredTemplates.length > 0 ? (
           filteredTemplates.map((product) => (
             <div key={product.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-lg bg-gray-50 border overflow-hidden flex-shrink-0 flex items-center justify-center">
-                  <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                  <img src={getImageUrl(product)} alt="" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-mono text-gray-400">#{String(product.id).slice(0, 8)}</p>
@@ -199,6 +216,7 @@ const AllProducts = () => {
         )}
       </div>
 
+
       {isViewModal && selectedProduct && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-8"
@@ -229,9 +247,9 @@ const AllProducts = () => {
             <div className="flex-1 bg-gray-100 flex items-center justify-center p-4 sm:p-10 overflow-hidden">
               <div className="relative w-full h-full flex items-center justify-center">
                 <img
-                  src={selectedProduct.image_url}
+                  src={getImageUrl(selectedProduct)}
                   alt="Design Preview"
-                  className="max-w-full max-h-full object-cover rounded-md shadow-2xl bg-white transition-all duration-300"
+                  className="max-w-full max-h-full object-contain rounded-md shadow-2xl bg-white transition-all duration-300"
                 />
               </div>
             </div>

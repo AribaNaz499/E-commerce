@@ -1,186 +1,167 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  Save, ChevronLeft, Loader2, Image as ImageIcon, Type, 
-  ShieldCheck, Monitor, ChevronRight, Layout as LayoutIcon, 
-  PlayCircle, Volume2, Sticker, Sparkles, X 
-} from 'lucide-react';
-import { UserCanvasContext, UserCanvasProvider } from "../../context/UserCanvasContext"; 
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from "../../supabase/client";
-import CanvasArea from "../editor/CanvasArea";
-import ToolPanel from "../editor/ToolPanel";
+import { CanvasContext } from "../../context/CanvasContext";
+import CanvasArea from "../../components/editor/CanvasArea";
+import ToolPanel from "../../components/editor/ToolPanel";
+import { 
+  ImageIcon, Type, Smile, ArrowLeft, Layout, 
+  ChevronLeft, ChevronRight 
+} from 'lucide-react';
 
-const UserEditDesignContent = () => {
+const UserEditDesign = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const context = useContext(UserCanvasContext);
+  const context = useContext(CanvasContext);
   
-  if (!context) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans">Loading...</div>;
+  if (!context) return <div className="h-screen flex items-center justify-center font-bold">Context Error!</div>;
 
-  const {
-    currentSlide, setCurrentSlide, elements, setElements, setCanvasBg, 
-    canvasBg, orientation, setOrientation, stageRef, activeTool, setActiveTool,
-    imageInputRef, handleImageUpload
+  const { 
+    elements, setElements, 
+    setCanvasBg, 
+    orientation, setOrientation, 
+    activeTool, setActiveTool, 
+    isToolPanelOpen, setIsToolPanelOpen 
   } = context;
-
-  const [designName, setDesignName] = useState("");
+  
   const [fetching, setFetching] = useState(true);
-
-  const slides = [
-    { id: 0, label: "Preview", icon: <Monitor size={16}/>, editable: false },
-    { id: 1, label: "Design", icon: <Sparkles size={16}/>, editable: true },
-    { id: 2, label: "Message", icon: <Type size={16}/>, editable: true },
-    { id: 3, label: "Branding", icon: <ShieldCheck size={16}/>, editable: false },
-  ];
+  const [currentSlide, setCurrentSlide] = useState(1);
+  const [slidesData, setSlidesData] = useState({ 1: [], 2: [], 3: [], 4: [] });
 
   useEffect(() => {
-    const loadDesign = async () => {
+    const loadData = async () => {
       if (!id) return;
-      setFetching(true);
       try {
         const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
         if (error) throw error;
-        setDesignName(data.name);
-        if (data.content) {
-          setCanvasBg(data.content.canvasBg || "#ffffff");
-          setElements(data.content.elements || []);
-          setOrientation(data.content.config?.orientation || "portrait");
+        
+        if (data) {
+         
+          let forcedOrientation = data.orientation || data.content?.orientation;
+
+          if (!forcedOrientation && data.content?.elements) {
+            const elements = data.content.elements;
+            const isWide = elements.some(el => (el.x + (el.width || 0)) > 400);
+            forcedOrientation = isWide ? 'landscape' : 'portrait';
+          }
+
+          setOrientation(forcedOrientation || "portrait");
+          
+          setCanvasBg(data.content?.canvasBg || "#ffffff");
+          
+        
+          const initialElements = data.content?.elements || [];
+          setSlidesData(prev => ({ ...prev, 1: initialElements }));
+          setElements(initialElements);
         }
-      } catch (err) { console.error(err); }
-      finally { setFetching(false); }
+      } catch (err) { 
+        console.error("Fetch Error:", err); 
+      } finally { 
+        setFetching(false); 
+      }
     };
-    loadDesign();
-  }, [id]);
+    loadData();
+  }, [id, setOrientation, setCanvasBg, setElements]);
+
+  useEffect(() => {
+    if (!fetching) {
+      setSlidesData(prev => ({ ...prev, [currentSlide]: elements }));
+    }
+  }, [elements, fetching, currentSlide]);
+
+  const handleSlideChange = (nextSlideId) => {
+    setElements(slidesData[nextSlideId] || []);
+    setCurrentSlide(nextSlideId);
+    setActiveTool(null);
+    setIsToolPanelOpen(false);
+  };
+
+  const handleToolClick = (tool) => {
+    if (currentSlide === 1 || currentSlide === 4) return; 
+    if (activeTool === tool && isToolPanelOpen) {
+      setIsToolPanelOpen(false);
+      setActiveTool(null);
+    } else {
+      setActiveTool(tool);
+      setIsToolPanelOpen(true);
+    }
+  };
+
+  if (fetching) return (
+    <div className="h-screen w-full flex items-center justify-center bg-white">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
-    <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans antialiased text-slate-900">
-      
-
-      <nav className="h-16 bg-white border-b border-slate-200 flex justify-between items-center px-8 z-50 shadow-sm">
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all font-semibold text-sm"
-          >
-            <ChevronLeft size={18} /> Exit
-          </button>
-          <div className="h-6 w-[1px] bg-slate-200"></div>
-          <h2 className="text-slate-700 font-bold text-sm">{designName || "Untitled Project"}</h2>
-        </div>
-
-        <button 
-          onClick={() => setCurrentSlide(0)} 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95"
-        >
-          Preview Final
+    <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
+      <nav className="h-16 bg-white border-b px-6 flex items-center justify-between z-50 shadow-sm">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 font-bold hover:text-blue-600">
+          <ArrowLeft size={18}/> Back
         </button>
-      </nav>
-
-    
-      <div className="flex-1 flex overflow-hidden">
         
-  
-        <aside className="w-20 border-r border-slate-100 flex flex-col items-center py-8 gap-8 bg-white z-20 shadow-sm">
-          {[
-            { id: 'layout', icon: <LayoutIcon size={20}/>, label: 'Layout' },
-            { id: 'text', icon: <Type size={20}/>, label: 'Text' },
-            { id: 'photos', icon: <ImageIcon size={20}/>, label: 'Photos', action: () => imageInputRef.current.click() },
-            { id: 'stickers', icon: <Sticker size={20}/>, label: 'Stickers' },
-          ].map((tool) => (
+        <div className="flex bg-slate-100 p-1 rounded-xl border">
+          {[1, 2, 3, 4].map((num) => (
             <button 
-              key={tool.id}
-              onClick={tool.action || (() => setActiveTool(activeTool === tool.id ? null : tool.id))}
-              className={`flex flex-col items-center gap-1 transition-all ${activeTool === tool.id ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              <div className={`p-3 rounded-xl ${activeTool === tool.id ? 'bg-blue-50' : ''}`}>
-                {tool.icon}
-              </div>
-              <span className="text-[9px] font-bold uppercase">{tool.label}</span>
+              key={num} 
+              onClick={() => handleSlideChange(num)}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${currentSlide === num ? 'bg-white shadow text-blue-600' : 'text-slate-400'}`}>
+              {num === 1 ? 'Front' : num === 4 ? 'Back' : `Side ${num}`}
             </button>
           ))}
+        </div>
+        
+        <button className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-xs">Order Now</button>
+      </nav>
+
+      <div className="flex-1 flex overflow-hidden">
+        <aside className="w-20 bg-white border-r flex flex-col items-center py-8 gap-8 z-40">
+          <SidebarBtn icon={<ImageIcon/>} label="Media" active={activeTool === 'image'} onClick={() => handleToolClick('image')} />
+          <SidebarBtn icon={<Type/>} label="Text" active={activeTool === 'text'} onClick={() => handleToolClick('text')} />
+          <SidebarBtn icon={<Smile/>} label="Stickers" active={activeTool === 'sticker'} onClick={() => handleToolClick('sticker')} />
+          <SidebarBtn icon={<Layout/>} label="Layout" active={activeTool === 'layout'} onClick={() => handleToolClick('layout')} />
         </aside>
 
-  
-        {activeTool && slides[currentSlide].editable && (
-          <div className="w-72 bg-white border-r border-slate-100 shadow-xl z-10 animate-in slide-in-from-left duration-300">
-            <div className="h-14 border-b flex justify-between items-center px-4 bg-slate-50/50">
-              <span className="text-xs font-black uppercase tracking-widest text-slate-500">{activeTool} Settings</span>
-              <button onClick={() => setActiveTool(null)} className="p-1 hover:bg-slate-200 rounded-full transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-4 overflow-y-auto h-[calc(100vh-120px)]">
-              <ToolPanel />
-            </div>
+        {isToolPanelOpen && (
+          <div className="w-80 h-full bg-white border-r shadow-2xl z-30 flex-shrink-0">
+             <ToolPanel />
           </div>
         )}
 
-    
-        <main className={`flex-1 flex flex-col items-center justify-center p-10 bg-[#f1f5f9] relative transition-all duration-500`}>
-           <div className="absolute top-6">
-              <span className="px-4 py-1.5 bg-white shadow-sm text-blue-600 text-[10px] font-black rounded-full uppercase border border-slate-100">
-                Current Step: {slides[currentSlide].label}
-              </span>
-           </div>
+        <main className="flex-1 flex flex-col items-center justify-center p-8 relative bg-[#F1F5F9]">
+          
+        
+          <div className={`relative transition-all duration-500 ease-in-out flex items-center justify-center
+            ${orientation === 'portrait' ? 'h-[550px] aspect-[4/5]' : 'w-[700px] aspect-[1.5/1]'}
+            ${isToolPanelOpen ? 'scale-90 -translate-x-4' : 'scale-100'}`}
+          >
+            <div className="absolute inset-4 bg-black/10 blur-[60px] rounded-full -z-10 translate-y-12"></div>
+            
+            <div className="h-full w-full bg-white rounded-2xl shadow-2xl border-[12px] border-white overflow-hidden relative flex items-center justify-center">
+              <CanvasArea />
+            </div>
+          </div>
 
-           <div className={`transition-all duration-700 ${!slides[currentSlide].editable ? 'pointer-events-none opacity-90 scale-95' : 'scale-100'}`}>
-              {fetching ? <Loader2 className="animate-spin text-blue-500" size={32} /> : <CanvasArea />}
-           </div>
+          <div className="absolute bottom-10 flex items-center gap-10">
+            <button disabled={currentSlide === 1} onClick={() => handleSlideChange(currentSlide - 1)} className="p-3 bg-white rounded-full shadow-lg disabled:opacity-20"><ChevronLeft/></button>
+            <div className="flex gap-2.5">
+              {[1, 2, 3, 4].map(n => (
+                <div key={n} className={`h-2 rounded-full transition-all duration-500 ${currentSlide === n ? 'w-10 bg-blue-500' : 'w-2 bg-slate-300'}`} />
+              ))}
+            </div>
+            <button disabled={currentSlide === 4} onClick={() => handleSlideChange(currentSlide + 1)} className="p-3 bg-white rounded-full shadow-lg disabled:opacity-20"><ChevronRight/></button>
+          </div>
         </main>
-
-        
-        <div className="hidden 2xl:flex w-72 bg-white border-l border-slate-100 p-6 flex-col items-center justify-center">
-            <div className="opacity-20 flex flex-col items-center grayscale">
-               <ShieldCheck size={60} />
-               <p className="mt-4 font-black text-xl italic underline">PREVIEW AREA</p>
-            </div>
-        </div>
       </div>
-
-    
-      <footer className="h-32 bg-white border-t border-slate-200 flex items-center justify-center gap-10 px-8 z-50">
-        <button 
-          onClick={() => setCurrentSlide(p => Math.max(0, p-1))} 
-          className="p-3 bg-slate-50 rounded-full text-slate-400 disabled:opacity-20"
-          disabled={currentSlide === 0}
-        >
-          <ChevronLeft size={20}/>
-        </button>
-        
-        <div className="flex gap-4">
-          {slides.map((s) => (
-            <div 
-              key={s.id} 
-              onClick={() => setCurrentSlide(s.id)}
-              className={`w-16 h-20 rounded-xl border-2 cursor-pointer flex flex-col items-center justify-center transition-all
-                ${currentSlide === s.id ? 'border-blue-500 bg-blue-50 shadow-lg -translate-y-1' : 'border-slate-100 bg-slate-50 opacity-50'}`}
-            >
-              <div className={currentSlide === s.id ? 'text-blue-600' : 'text-slate-400'}>
-                {s.icon}
-              </div>
-              <span className="text-[7px] font-bold mt-2 uppercase">{s.label}</span>
-            </div>
-          ))}
-        </div>
-
-        <button 
-          onClick={() => setCurrentSlide(p => Math.min(3, p+1))} 
-          className="p-3 bg-slate-50 rounded-full text-slate-400 disabled:opacity-20"
-          disabled={currentSlide === 3}
-        >
-          <ChevronRight size={20}/>
-        </button>
-      </footer>
-
-      <input type="file" ref={imageInputRef} className="hidden" onChange={(e) => handleImageUpload(e.target.files[0])} />
     </div>
   );
 };
 
-const UserEditDesign = () => (
-  <UserCanvasProvider>
-    <UserEditDesignContent />
-  </UserCanvasProvider>
+const SidebarBtn = ({ icon, label, active, onClick }) => (
+  <button onClick={onClick} className={`flex flex-col items-center gap-1.5 w-full py-2 ${active ? 'text-blue-600' : 'text-slate-400'}`}>
+    <div className={`p-3.5 rounded-2xl ${active ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>{icon}</div>
+    <span className="text-[9px] font-black uppercase">{label}</span>
+  </button>
 );
 
 export default UserEditDesign;
