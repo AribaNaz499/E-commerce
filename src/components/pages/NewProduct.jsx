@@ -7,10 +7,16 @@ import { supabase } from "../../supabase/client";
 import ToolPanel from "../editor/ToolPanel";
 import CanvasArea from "../editor/CanvasArea";
 import LayerPannel from "../editor/LayerPannel";  
-import Sidebar from "../editor/Sidebar";
+import Sidebar from "../editor/Sidebar"; // Ye aapka Canvas wala Sidebar hai
 
 const NewProduct = () => {
   const navigate = useNavigate();
+  const context = useContext(CanvasContext);
+
+  if (!context) {
+    return <div className="h-screen flex items-center justify-center">Loading Context...</div>;
+  }
+
   const {
     elements,
     setElements,
@@ -24,9 +30,8 @@ const NewProduct = () => {
     getPublishDimensions,
     activeTool,
     setActiveTool,
-    isSidebarOpen,
-    setIsSidebarOpen,
-    isToolPanelOpen,
+    isSidebarOpen,      // Context se liya
+    setIsSidebarOpen,   // Context se liya
     setIsToolPanelOpen,
     imageInputRef,
     videoInputRef,
@@ -34,99 +39,70 @@ const NewProduct = () => {
     handleImageUpload,
     handleVideoUpload,
     handleAudioUpload,
-    selectedId  
-  } = useContext(CanvasContext);
+  } = context;
 
   const [designName, setDesignName] = useState("Untitled Design");
   const [category, setCategory] = useState("Posters");
   const [loading, setLoading] = useState(false);
 
-  
   useEffect(() => {
-    console.log("Active Tool changed:", activeTool);
-    if (activeTool) {
-      setIsToolPanelOpen(true);
-    } else {
-      setIsToolPanelOpen(false);
-    }
+    setIsToolPanelOpen(!!activeTool);
   }, [activeTool, setIsToolPanelOpen]);
 
-  
   useEffect(() => {
-    setElements([]);
-    setCanvasBg("#ffffff");
-    setAudioFile(null);
-    setOrientation("portrait");
-    setActiveTool(null);
-    setIsSidebarOpen(false);
-    setIsToolPanelOpen(false);
-  }, [setElements, setCanvasBg, setAudioFile, setOrientation, setActiveTool, setIsSidebarOpen, setIsToolPanelOpen]);
+    if (setElements) setElements([]);
+    if (setCanvasBg) setCanvasBg("#ffffff");
+    if (setAudioFile) setAudioFile(null); 
+    if (setOrientation) setOrientation("portrait");
+    if (setActiveTool) setActiveTool(null);
+  }, []);
 
-const handlePublish = async () => {
-  if (!designName.trim()) {
-    alert("Please enter a design name");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const publishSize = getPublishDimensions();
-
-    let previewDataURL = "https://placehold.co/600x400";
-
-    if (stageRef?.current) {
-      previewDataURL = stageRef.current.toDataURL({
-        pixelRatio: 3,
-        mimeType: "image/png",
-      });
+  const handlePublish = async () => {
+    if (!designName.trim()) {
+      alert("Please enter a design name");
+      return;
     }
+    setLoading(true);
+    try {
+      const publishSize = getPublishDimensions ? getPublishDimensions() : { width: 1080, height: 1920 };
+      let previewDataURL = "https://placehold.co/600x400";
 
-    const cleanedElements = elements
-      .map((el) => {
-        if (el?.type === "video" && el?.url?.startsWith("blob:")) {
-          return null;
-        }
-        return el;
-      })
-      .filter(Boolean);
+      if (stageRef?.current) {
+        previewDataURL = stageRef.current.toDataURL({ pixelRatio: 1, mimeType: "image/png" });
+      }
 
-    const designContent = {
-      elements: cleanedElements,
-      canvasBg,
-      audio: audioFile,
-      config: {
-        orientation,
-        dimensions: publishSize,
-      },
-    };
+      const designContent = {
+        elements: elements.filter(el => !(el?.type === "video" && el?.url?.startsWith("blob:"))),
+        canvasBg,
+        audio: audioFile,
+        config: { orientation, dimensions: publishSize },
+      };
 
-    const { error } = await supabase.from("products").insert([
-      {
+      const { error } = await supabase.from("products").insert([{
         name: designName,
         content: designContent,
         category,
         image_url: previewDataURL,
-      },
-    ]);
+      }]);
 
-    if (error) throw error;
+      if (error) throw error;
+      alert("Design Published Successfully! 🎉");
+      navigate("/admin-portal/all-products"); // Absolute path fix
 
-    alert("Design Published Successfully! 🎉");
-    navigate("/all-products");
-  } catch (err) {
-    console.error("Publish Error:", err);
-    alert("Save Error: " + err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      alert("Save Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans">
-    
+    <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans text-sm">
+      
+      {/* Header */}
       <div className="h-auto md:h-14 bg-white border-b flex flex-col md:flex-row justify-between items-center px-4 py-2 md:py-0 z-50 shadow-sm gap-2">
         <div className="flex items-center gap-2 w-full md:w-auto">
+          {/* Mobile Menu Button for Canvas Sidebar */}
           <button 
             onClick={() => setIsSidebarOpen(true)} 
             className="md:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-700"
@@ -135,7 +111,7 @@ const handlePublish = async () => {
           </button>
 
           <button 
-            onClick={() => navigate('/all-products')} 
+            onClick={() => navigate('/admin-portal/all-products')} 
             className="p-2 hover:bg-gray-100 rounded-full"
           >
             <ChevronLeft size={20} className="text-gray-600" />
@@ -145,169 +121,61 @@ const handlePublish = async () => {
             type="text"
             value={designName}
             onChange={(e) => setDesignName(e.target.value)}
-            className="font-bold text-gray-800 bg-transparent border-b border-transparent focus:border-blue-300 rounded px-2 py-1 w-full md:w-64 outline-none text-sm"
-            placeholder="Design Name"
+            className="font-bold text-gray-800 bg-transparent border-b border-transparent focus:border-blue-300 rounded px-2 py-1 w-full md:w-64 outline-none"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+        <div className="flex items-center gap-2">
           <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-            <button 
-              onClick={() => setOrientation("portrait")} 
-              className={`p-2 rounded-md transition-all ${
-                orientation === "portrait" 
-                  ? 'bg-white shadow-sm text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Portrait Mode"
-            >
-              <Smartphone size={14} />
-            </button>
-            <button 
-              onClick={() => setOrientation("landscape")} 
-              className={`p-2 rounded-md transition-all ${
-                orientation === "landscape" 
-                  ? 'bg-white shadow-sm text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Landscape Mode"
-            >
-              <Monitor size={14} />
-            </button>
+            <button onClick={() => setOrientation("portrait")} className={`p-2 rounded-md ${orientation === "portrait" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}><Smartphone size={14} /></button>
+            <button onClick={() => setOrientation("landscape")} className={`p-2 rounded-md ${orientation === "landscape" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}><Monitor size={14} /></button>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)} 
-              className="text-xs font-medium border-gray-200 rounded-lg bg-gray-50 px-2 py-1.5 outline-none hover:bg-white"
-            >
-              <option value="Posters">Posters</option>
-              <option value="Logos">Logos</option>
-              <option value="Social Media">Social Media</option>
-              <option value="Kids Designs">Kids Designs</option>
-            </select>
-            
-            <button 
-              onClick={handlePublish} 
-              disabled={loading} 
-              className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 text-xs shadow-md disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />}
-              {loading ? "Publishing..." : "Publish"}
-            </button>
-          </div>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="text-xs font-medium border-gray-200 rounded-lg bg-gray-50 px-2 py-1.5 outline-none">
+            <option value="Posters">Posters</option>
+            <option value="Logos">Logos</option>
+            <option value="Social Media">Social Media</option>
+          </select>
+          <button onClick={handlePublish} disabled={loading} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-md disabled:opacity-50">
+            {loading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} Publish
+          </button>
         </div>
       </div>
 
-  
+      {/* Main Body */}
       <div className="flex-1 flex overflow-hidden relative">
-      
-        {isSidebarOpen && (
-          <>
-            <div
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
-              onClick={() => setIsSidebarOpen(false)}
-            />
-            
-            <div className="fixed left-0 top-0 h-full w-64 bg-white z-50 shadow-xl md:hidden">
-              <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="font-bold text-purple-700">Tools</h2>
-                <button 
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-2">
-                <Sidebar />
-              </div>
-            </div>
-          </>
-        )}
-
         
-        <div className="hidden md:block md:static z-40 h-full w-20">
-          <Sidebar />
+        {/* CANVAS SIDEBAR (Isse humne wapas add kiya hai) */}
+        <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative left-0 top-0 h-full w-64 md:w-20 bg-white z-50 shadow-xl md:shadow-none transition-transform duration-300`}>
+          <div className="md:hidden flex justify-between items-center p-4 border-b">
+            <h2 className="font-bold text-blue-600">Editor Tools</h2>
+            <X size={24} onClick={() => setIsSidebarOpen(false)} />
+          </div>
+          <Sidebar /> {/* Canvas Toolbar component */}
         </div>
 
-        
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          <div className="flex-1 bg-[#f1f5f9] relative overflow-hidden">
-            <CanvasArea />
-          </div>
+        {/* Canvas Area */}
+        <div className="flex-1 bg-[#f1f5f9] relative overflow-hidden flex flex-col items-center justify-center">
+          <CanvasArea />
         </div>
 
-       
+        {/* Right Tool Panel */}
         {activeTool && (
-          <div className="hidden md:block md:static z-40 h-full w-80">
-            <ToolPanel />
-          </div>
-        )}
-
-       
-        {activeTool && (
-          <div className="md:hidden fixed inset-0 z-50 bg-white overflow-auto pt-16">
-            <div className="fixed top-0 left-0 right-0 bg-white border-b z-10 p-4 flex justify-between items-center">
-              <h2 className="font-bold text-lg text-purple-700 capitalize">{activeTool}</h2>
-              <button 
-                onClick={() => {
-                  setActiveTool(null);
-                  setIsToolPanelOpen(false);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="pt-16 p-4">
-              <ToolPanel />
-            </div>
+          <div className="fixed md:relative inset-0 md:inset-auto z-[60] md:z-40 h-full w-full md:w-80 bg-white border-l shadow-2xl md:shadow-none overflow-y-auto">
+             <div className="md:hidden flex justify-between items-center p-4 border-b bg-white sticky top-0">
+               <h2 className="font-bold capitalize">{activeTool}</h2>
+               <X size={24} onClick={() => setActiveTool(null)} />
+             </div>
+             <ToolPanel />
           </div>
         )}
       </div>
 
       <LayerPannel />
 
-      <input 
-        type="file" 
-        ref={imageInputRef} 
-        accept="image/*" 
-        style={{ display: 'none' }} 
-        onChange={(e) => {
-          console.log("🖼️ Image selected:", e.target.files?.[0]);
-          if (e.target.files?.[0]) {
-            handleImageUpload(e.target.files[0]);
-          }
-        }} 
-      />
-
-      <input 
-        type="file" 
-        ref={videoInputRef} 
-        accept="video/*" 
-        style={{ display: 'none' }} 
-        onChange={(e) => {
-          console.log("🎬 Video selected:", e.target.files?.[0]);
-          if (e.target.files?.[0]) {
-            handleVideoUpload(e.target.files[0]);
-          }
-        }} 
-      />
-
-      <input 
-        type="file" 
-        ref={audioInputRef} 
-        accept="audio/*" 
-        style={{ display: 'none' }} 
-        onChange={(e) => {
-          console.log("🎵 Audio selected:", e.target.files?.[0]);
-          if (e.target.files?.[0]) {
-            handleAudioUpload(e.target.files[0]);
-          }
-        }} 
-      />
+      {/* Hidden Inputs */}
+      <input type="file" ref={imageInputRef} className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+      <input type="file" ref={videoInputRef} className="hidden" onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} />
+      <input type="file" ref={audioInputRef} className="hidden" onChange={(e) => e.target.files?.[0] && handleAudioUpload(e.target.files[0])} />
     </div>
   );
 };

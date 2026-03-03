@@ -11,6 +11,11 @@ import Sidebar from "../editor/Sidebar";
 const EditProduct = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const context = useContext(CanvasContext);
+
+  // Context check to prevent crash
+  if (!context) return null;
+
   const {
     elements,
     setElements,
@@ -24,9 +29,7 @@ const EditProduct = () => {
     getPublishDimensions,
     activeTool,
     setActiveTool,
-    isSidebarOpen,
     setIsSidebarOpen,
-    isToolPanelOpen,
     setIsToolPanelOpen,
     imageInputRef,
     videoInputRef,
@@ -34,8 +37,7 @@ const EditProduct = () => {
     handleImageUpload,
     handleVideoUpload,
     handleAudioUpload,
-    selectedId
-  } = useContext(CanvasContext);
+  } = context;
 
   const [designName, setDesignName] = useState("");
   const [category, setCategory] = useState("Posters");
@@ -43,15 +45,13 @@ const EditProduct = () => {
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    if (activeTool) {
-      setIsToolPanelOpen(true);
-    } else {
-      setIsToolPanelOpen(false);
-    }
+    setIsToolPanelOpen(!!activeTool);
   }, [activeTool, setIsToolPanelOpen]);
 
   useEffect(() => {
     const loadDesign = async () => {
+      if (!id) return;
+      
       setFetching(true);
       try {
         const { data, error } = await supabase
@@ -62,53 +62,57 @@ const EditProduct = () => {
 
         if (error) throw error;
 
-        setDesignName(data.name);
-        setCategory(data.category || "Posters");
+        if (data) {
+          setDesignName(data.name || "Untitled Design");
+          setCategory(data.category || "Posters");
 
-        if (data.content) {
-          if (data.content.config) {
-            setOrientation(data.content.config.orientation || "portrait");
-          }
-          setCanvasBg(data.content.canvasBg || "#ffffff");
-          setAudioFile(data.content.audio || null);
+          if (data.content) {
+            if (data.content.config?.orientation) {
+              setOrientation(data.content.config.orientation);
+            }
+            setCanvasBg(data.content.canvasBg || "#ffffff");
+            setAudioFile(data.content.audio || null);
 
-          // FIX: Removing the blob filter so video elements stay in the array
-          const rawElements = data.content.elements || [];
-          const fixedElements = rawElements.filter((el) => el != null);
-          
-          setFetching(false);
-
-          setTimeout(() => {
+            const rawElements = data.content.elements || [];
+            const fixedElements = rawElements.filter((el) => el != null);
             setElements(fixedElements);
-          }, 100);
-        } else {
-          setFetching(false);
+          }
         }
       } catch (err) {
         console.error("Fetch Error:", err.message);
-        setFetching(false);
+      } finally {
+        // Chota sa delay taake canvas renders sahi se ho jayein
+        setTimeout(() => setFetching(false), 500);
       }
     };
 
-    if (id) loadDesign();
+    loadDesign();
 
     return () => {
       setActiveTool(null);
-      setIsSidebarOpen(false);
-      setIsToolPanelOpen(false);
+      setElements([]); 
     };
-  }, [id, setElements, setCanvasBg, setAudioFile, setOrientation, setActiveTool, setIsSidebarOpen, setIsToolPanelOpen]);
+  }, [id, setElements, setCanvasBg, setAudioFile, setOrientation, setActiveTool]);
 
   const handleUpdate = async () => {
+    if (!designName.trim()) {
+      alert("Please enter a name");
+      return;
+    }
+
     setLoading(true);
     try {
-      const publishSize = getPublishDimensions();
+      const publishSize = getPublishDimensions ? getPublishDimensions() : { width: 1080, height: 1920 };
+      
+      // PREVIEW CAPTURE FIX:
+      let previewDataURL = "";
+      if (stageRef.current) {
+        previewDataURL = stageRef.current.toDataURL({
+          pixelRatio: 1, // Thumbnail ke liye 1 kaafi hai
+          mimeType: "image/png",
+        });
+      }
 
-      const previewDataURL = stageRef.current
-        ? stageRef.current.toDataURL({ pixelRatio: 2 })
-        : "";
-
-      // FIX: Allowing all elements (including videos) to be saved
       const cleanedElements = elements.filter(Boolean);
 
       const { error } = await supabase
@@ -125,17 +129,19 @@ const EditProduct = () => {
             },
           },
           category,
-          image_url: previewDataURL,
+          image_url: previewDataURL, // New Preview saved here
         })
         .eq("id", id);
 
       if (error) throw error;
-
-      alert("Updated! 🎉");
-      navigate("/all-products");
+      
+      alert("Updated Successfully! 🎉");
+      // ROUTING FIX: Added leading slash
+      navigate("/admin-portal/all-products");
+      
     } catch (err) {
       console.error(err);
-      alert("Update Failed");
+      alert("Update Failed: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -143,157 +149,78 @@ const EditProduct = () => {
 
   return (
     <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden font-sans">
+      {/* Header */}
       <div className="h-auto md:h-14 bg-white border-b flex flex-col md:flex-row justify-between items-center px-4 py-2 md:py-0 z-50 shadow-sm gap-2">
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="md:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-700"
-          >
+          <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-700">
             <Menu size={22} />
           </button>
-
-          <button
-            onClick={() => navigate('/all-products')}
+          <button 
+            // ROUTING FIX: Added leading slash
+            onClick={() => navigate('/admin-portal/all-products')} 
             className="p-2 hover:bg-gray-100 rounded-full"
           >
             <ChevronLeft size={20} className="text-gray-600" />
           </button>
-
           <input
             type="text"
             value={designName}
             onChange={(e) => setDesignName(e.target.value)}
             className="font-bold text-gray-800 bg-transparent border-b border-transparent focus:border-blue-300 rounded px-2 py-1 w-full md:w-64 outline-none text-sm"
-            placeholder="Design Name"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-            <button
-              onClick={() => setOrientation("portrait")}
-              className={`p-2 rounded-md transition-all ${orientation === "portrait" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-              title="Portrait Mode"
-            >
-              <Smartphone size={14} />
-            </button>
-            <button
-              onClick={() => setOrientation("landscape")}
-              className={`p-2 rounded-md transition-all ${orientation === "landscape" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-              title="Landscape Mode"
-            >
-              <Monitor size={14} />
-            </button>
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="flex bg-gray-100 p-1 rounded-lg border">
+            <button onClick={() => setOrientation("portrait")} className={`p-2 rounded ${orientation === "portrait" ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}><Smartphone size={14} /></button>
+            <button onClick={() => setOrientation("landscape")} className={`p-2 rounded ${orientation === "landscape" ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}><Monitor size={14} /></button>
           </div>
-
-          <div className="flex items-center gap-2">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="text-xs font-medium border-gray-200 rounded-lg bg-gray-50 px-2 py-1.5 outline-none hover:bg-white"
-            >
-              <option value="Posters">Posters</option>
-              <option value="Logos">Logos</option>
-              <option value="Social Media">Social Media</option>
-              <option value="Kids Designs">Kids Designs</option>
-            </select>
-
-            <button
-              onClick={handleUpdate}
-              disabled={loading}
-              className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 text-xs shadow-md disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />}
-              {loading ? "Updating..." : "Update"}
-            </button>
-          </div>
+          
+          <button 
+            onClick={handleUpdate} 
+            disabled={loading || fetching} 
+            className="bg-blue-600 text-white px-4 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold disabled:opacity-50 transition-all active:scale-95"
+          >
+            {loading ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />}
+            {loading ? "Updating..." : "Update"}
+          </button>
         </div>
       </div>
 
+      {/* Main Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {isSidebarOpen && (
-          <>
-            <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />
-            <div className="fixed left-0 top-0 h-full w-64 bg-white z-50 shadow-xl md:hidden">
-              <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="font-bold text-purple-700">Tools</h2>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-gray-100 rounded-full">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-2"><Sidebar /></div>
-            </div>
-          </>
-        )}
-
-        <div className="hidden md:block md:static z-40 h-full w-20">
+        {/* Editor Sidebar */}
+        <div className="hidden md:block w-20 border-r bg-white h-full">
           <Sidebar />
         </div>
-
-        <div className="flex-1 flex flex-col min-w-0 relative">
+        
+        <div className="flex-1 flex flex-col relative bg-[#f1f5f9] items-center justify-center">
           {fetching ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-50">
-              <Loader2 className="animate-spin text-blue-600" size={40} />
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 z-50">
+              <div className="text-center">
+                <Loader2 className="animate-spin text-blue-600 mx-auto mb-2" size={32} />
+                <p className="text-sm text-gray-500 font-medium">Loading your design...</p>
+              </div>
             </div>
           ) : (
-            <div className="flex-1 bg-[#f1f5f9] relative overflow-hidden">
-              <CanvasArea />
-            </div>
+             <CanvasArea />
           )}
         </div>
 
+        {/* Right Tool Panel */}
         {activeTool && !fetching && (
-          <div className="hidden md:block md:static z-40 h-full w-80">
+          <div className="hidden md:block w-80 border-l bg-white h-full overflow-y-auto">
             <ToolPanel />
-          </div>
-        )}
-
-        {activeTool && !fetching && (
-          <div className="md:hidden fixed inset-0 z-50 bg-white overflow-auto pt-16">
-            <div className="fixed top-0 left-0 right-0 bg-white border-b z-10 p-4 flex justify-between items-center">
-              <h2 className="font-bold text-lg text-purple-700 capitalize">{activeTool}</h2>
-              <button
-                onClick={() => {
-                  setActiveTool(null);
-                  setIsToolPanelOpen(false);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="pt-16 p-4">
-              <ToolPanel />
-            </div>
           </div>
         )}
       </div>
 
       <LayerPannel />
 
-      <input
-        type="file"
-        ref={imageInputRef}
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-      />
-
-      <input
-        type="file"
-        ref={videoInputRef}
-        accept="video/*"
-        className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])}
-      />
-
-      <input
-        type="file"
-        ref={audioInputRef}
-        accept="audio/*"
-        className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleAudioUpload(e.target.files[0])}
-      />
+      {/* Hidden Uploaders */}
+      <input type="file" ref={imageInputRef} accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+      <input type="file" ref={videoInputRef} accept="video/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} />
+      <input type="file" ref={audioInputRef} accept="audio/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleAudioUpload(e.target.files[0])} />
     </div>
   );
 };

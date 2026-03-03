@@ -23,7 +23,8 @@
     "react-konva-utils": "^2.0.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.7.0",
-    "use-image": "^1.1.4"
+    "use-image": "^1.1.4",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

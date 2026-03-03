@@ -7,9 +7,9 @@ const Sidebar = () => {
   const location = useLocation();
 
   const links = [
-    { icon: <Layers size={18} />, label: "Dashboard", path: "/" },
-    { icon: <ShoppingBag size={18} />, label: "All Products", path: "/all-products" },
-    { icon: <PlusSquare size={18} />, label: "Add Product", path: "/add-product" },
+    { icon: <Layers size={18} />, label: "Dashboard", path: "/admin-portal" },
+    { icon: <ShoppingBag size={18} />, label: "All Products", path: "/admin-portal/all-products" },
+    { icon: <PlusSquare size={18} />, label: "Add Product", path: "/admin-portal/add-product" },
   ];
 
   return (

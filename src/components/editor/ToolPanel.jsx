@@ -23,8 +23,6 @@ const ToolPanel = () => {
 
   if (!activeTool) return null;
 
-  console.log("Rendering ToolPanel for:", activeTool);
-
   const stickerList = ["⭐", "🔥", "❤️", "✅", "🚀", "✨", "🎈", "🎂", "🐱", "🐶", "🌈", "⭐"];
   const colors = ["#ffffff", "#f87171", "#fbbf24", "#34d399", "#60a5fa", "#c084fc", "#f472b6", "#000000"];
 
@@ -33,32 +31,9 @@ const ToolPanel = () => {
     setIsToolPanelOpen(false);
   };
 
-  const triggerImageUpload = () => {
-    console.log("🖼️ Triggering image upload");
-    if (imageInputRef.current) {
-      imageInputRef.current.click();
-    } else {
-      console.error("Image input ref not found");
-    }
-  };
-
-  const triggerVideoUpload = () => {
-    console.log("🎬 Triggering video upload");
-    if (videoInputRef.current) {
-      videoInputRef.current.click();
-    } else {
-      console.error("Video input ref not found");
-    }
-  };
-
-  const triggerAudioUpload = () => {
-    console.log("🎵 Triggering audio upload");
-    if (audioInputRef.current) {
-      audioInputRef.current.click();
-    } else {
-      console.error("Audio input ref not found");
-    }
-  };
+  const triggerImageUpload = () => imageInputRef.current?.click();
+  const triggerVideoUpload = () => videoInputRef.current?.click();
+  const triggerAudioUpload = () => audioInputRef.current?.click();
 
   const renderContent = () => {
     switch(activeTool) {
@@ -176,6 +151,28 @@ const ToolPanel = () => {
   return (
     <div className="h-full bg-white border-l border-slate-200 flex flex-col">
       
+      <input 
+        type="file" 
+        ref={imageInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        onChange={(e) => handleImageUpload(e.target.files[0])} 
+      />
+      <input 
+        type="file" 
+        ref={videoInputRef} 
+        className="hidden" 
+        accept="video/*" 
+        onChange={(e) => handleVideoUpload(e.target.files[0])} 
+      />
+      <input 
+        type="file" 
+        ref={audioInputRef} 
+        className="hidden" 
+        accept="audio/*" 
+        onChange={handleAudioUpload} 
+      />
+
       <div className="hidden md:flex p-4 border-b justify-between items-center bg-gradient-to-r from-purple-50 to-white shrink-0">
         <h2 className="font-bold text-lg text-purple-700 capitalize">{activeTool}</h2>
         <button 
@@ -186,7 +183,6 @@ const ToolPanel = () => {
         </button>
       </div>
       
-     
       <div className="flex-1 overflow-y-auto p-4">
         {renderContent()}
       </div>
