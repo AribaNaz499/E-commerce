@@ -31,8 +31,8 @@ const AllDesigns = () => {
         fetchAllDesigns();
     }, []);
 
-      const handleEditPage = (id) => {
-       navigate(`/design-editor/${id}`)
+    const handleEditPage = (id) => {
+        navigate(`/design-editor/${id}`)
     };
 
     return (
@@ -40,7 +40,6 @@ const AllDesigns = () => {
             <UserNavbar />
 
             <div className="bg-rose-50/30 py-12 px-6 md:px-20 min-h-screen">
-        
                 <div className="max-w-7xl mx-auto mb-12">
                     <button
                         onClick={() => navigate('/')}
@@ -54,7 +53,6 @@ const AllDesigns = () => {
                     </p>
                 </div>
 
-
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-950"></div>
@@ -64,7 +62,7 @@ const AllDesigns = () => {
                         {designs.map((product) => (
                             <div
                                 key={product.id}
-                                className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100"
+                                className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 flex flex-col"
                             >
                                 <div className="relative overflow-hidden aspect-square">
                                     <img
@@ -74,13 +72,16 @@ const AllDesigns = () => {
                                         loading="lazy"
                                     />
 
-                
-                                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <button className="bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-6 transition-transform hover:bg-rose-100 active:scale-95">
+                                    <div className="hidden md:flex absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <button className="bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-100 active:scale-95">
                                             Add to cart
                                         </button>
-                                        <button onClick={() => handleEditPage(product.id)}
-                                            className='bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-6 transition-transform hover:bg-rose-100 active:scale-95'>Edit</button>
+                                        <button 
+                                            onClick={() => handleEditPage(product.id)}
+                                            className='bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-100 active:scale-95'
+                                        >
+                                            Edit
+                                        </button>
                                         <div className="flex items-center gap-4 text-white font-semibold text-sm">
                                             <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><Share size={16} /> Share</button>
                                             <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><GitCompare size={16} /> Compare</button>
@@ -89,18 +90,41 @@ const AllDesigns = () => {
                                     </div>
                                 </div>
 
-                                <div className="p-5 text-left">
-                                    <p className="font-bold text-lg text-gray-800">{product.name}</p>
-                                    <span className="inline-block mt-3 bg-rose-100 text-rose-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                                        {product.category || "General"}
-                                    </span>
+                                <div className="p-5 text-left flex flex-col flex-grow">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-bold text-lg text-gray-800 line-clamp-1">{product.name}</p>
+                                            <span className="inline-block mt-1 bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                {product.category || "General"}
+                                            </span>
+                                        </div>
+                                        <button className="md:hidden text-gray-400 hover:text-rose-600 transition-colors">
+                                            <Heart size={20} />
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-4 flex flex-col gap-2 md:hidden">
+                                        <button className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-transform">
+                                            Add to Cart
+                                        </button>
+                                        <button 
+                                            onClick={() => handleEditPage(product.id)} 
+                                            className="w-full border border-gray-200 text-gray-700 text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-transform"
+                                        >
+                                            Edit Design
+                                        </button>
+                                        
+                                        <div className="flex justify-between mt-1 px-1">
+                                           <button className="flex items-center gap-1 text-xs text-gray-500 font-medium"><Share size={14} /> Share</button>
+                                           <button className="flex items-center gap-1 text-xs text-gray-500 font-medium"><GitCompare size={14} /> Compare</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
 
-                
                 {!loading && designs.length === 0 && (
                     <div className="text-center py-20">
                         <p className="text-gray-500 text-xl">No designs found.</p>

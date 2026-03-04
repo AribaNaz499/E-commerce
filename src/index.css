@@ -15,3 +15,39 @@
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
 }
+
+
+
+
+
+
+/* Card Design - Standard CSS approach to avoid name validation errors */
+@utility perspective-2000 {
+  perspective: 2000px;
+}
+
+@utility transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+@utility backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+
+@utility rotate-y-front {
+  transform: rotateY(0deg);
+}
+
+@utility rotate-y-inside {
+  transform: rotateY(-180deg);
+}
+
+@utility rotate-y-back {
+  transform: rotateY(-360deg);
+}
+
+@utility rotate-y-180 {
+  transform: rotateY(180deg);
+}

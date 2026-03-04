@@ -14,11 +14,12 @@ import { supabase } from "../../supabase/client";
 
 const UserHome = () => {
     const [templates, setTemplates] = useState([]);
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    const fetchTemplates = async () => {
+   const fetchTemplates = async () => {
         try {
-
+            setLoading(true); 
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
@@ -29,6 +30,8 @@ const UserHome = () => {
             setTemplates(data || []);
         } catch (err) {
             console.error("Fetch Error:", err.message);
+        } finally {
+            setLoading(false); 
         }
     };
 
@@ -48,6 +51,8 @@ const UserHome = () => {
         const slug = title.replace(/\s+/g, '-').toLowerCase();
         navigate(`/category/${slug}`);
     };
+
+   
 
     return (
         <>
@@ -103,45 +108,73 @@ const UserHome = () => {
 
             <div className="mt-20 text-center px-6 mb-12">
                 <h3 className="font-bold text-2xl md:text-3xl text-gray-800">Our Designs</h3>
-                <p className="mt-2 text-gray-500 max-w-2xl mx-auto">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                </p>
-
-                <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:px-12 lg:px-20">
-                    {templates.map((product) => (
-                        <div key={product.id} className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100">
-                            <div className="relative overflow-hidden aspect-square">
-                                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-                                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <button className="bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-6 transition-transform hover:bg-rose-100 active:scale-95">Add to cart</button>
-                                    <button  onClick={() => handleEditPage(product.id)}
-                                     className='bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-6 transition-transform hover:bg-rose-100 active:scale-95'>Edit</button>
-                                    <div className="flex items-center gap-4 text-white font-semibold text-sm">
-                                        <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><Share size={16} /> Share</button>
-                                        <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><GitCompare size={16} /> Compare</button>
-                                        <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><Heart size={16} /> Like</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-5 text-left">
-                                <p className="font-bold text-lg text-gray-800">{product.name}</p>
-                                <span className="inline-block mt-3 bg-rose-100 text-rose-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">{product.category || "General"}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
                 
-                {templates.length > 0 && (
-                    <div className="mt-10 flex justify-center">
-                        <button 
-                            onClick={handleShowMore}
-                            className="flex items-center gap-1 border-2 bg-rose-50 border-rose-950 text-rose-950 px-8 py-3 rounded-full font-bold hover:bg-rose-950 hover:text-white transition-all active:scale-95"
-                        >
-                            Show More
-                            <ChevronDown size={20} />
-                        </button>
+               {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-950"></div>
                     </div>
+                )  : (
+                    <>
+                        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:px-12 lg:px-20">
+                           {templates.map((product) => (
+    <div key={product.id} className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 flex flex-col">
+        
+        <div className="relative overflow-hidden aspect-square">
+            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+            
+            <div className="hidden md:flex absolute inset-0 bg-black/50 flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <button className="bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-100 active:scale-95">Add to cart</button>
+                <button onClick={() => handleEditPage(product.id)} className='bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-100 active:scale-95'>Edit</button>
+                <div className="flex items-center gap-4 text-white font-semibold text-sm">
+                    <button className="flex items-center gap-1 hover:text-yellow-500"><Share size={16} /> Share</button>
+                    <button className="flex items-center gap-1 hover:text-yellow-500"><GitCompare size={16} /> Compare</button>
+                    <button className="flex items-center gap-1 hover:text-yellow-500"><Heart size={16} /> Like</button>
+                </div>
+            </div>
+        </div>
+
+        <div className="p-4 md:p-5 text-left flex flex-col flex-grow">
+            <div className="flex justify-between items-start">
+                <div>
+                    <p className="font-bold text-base md:text-lg text-gray-800 line-clamp-1">{product.name}</p>
+                    <span className="inline-block mt-1 bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        {product.category || "General"}
+                    </span>
+                </div>
+                <button className="md:hidden text-gray-400 hover:text-rose-600 transition-colors">
+                    <Heart size={20} />
+                </button>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 md:hidden">
+                <button className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-lg active:scale-95 transition-transform">
+                    Add to Cart
+                </button>
+                <button 
+                    onClick={() => handleEditPage(product.id)} 
+                    className="w-full border border-gray-200 text-gray-700 text-sm font-bold py-2.5 rounded-lg active:scale-95 transition-transform"
+                >
+                    Edit Design
+                </button>
+                
+                <div className="flex justify-between mt-1 px-1">
+                   <button className="flex items-center gap-1 text-xs text-gray-500 font-medium"><Share size={14} /> Share</button>
+                   <button className="flex items-center gap-1 text-xs text-gray-500 font-medium"><GitCompare size={14} /> Compare</button>
+                </div>
+            </div>
+        </div>
+    </div>
+))}
+                        </div>
+
+                        {templates.length > 0 && (
+                            <div className="mt-10 flex justify-center">
+                                <button onClick={handleShowMore} className="flex items-center gap-1 border-2 bg-rose-50 border-rose-950 text-rose-950 px-8 py-3 rounded-full font-bold hover:bg-rose-950 hover:text-white transition-all active:scale-95">
+                                    Show More <ChevronDown size={20} />
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

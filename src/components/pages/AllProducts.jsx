@@ -8,6 +8,7 @@ const AllProducts = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [imageErrors, setImageErrors] = useState({});
   const navigate = useNavigate();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -19,7 +20,7 @@ const AllProducts = () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .order('created_at', { descending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setTemplates(data || []);
@@ -57,14 +58,44 @@ const AllProducts = () => {
   };
 
   const getImageUrl = (product) => {
-    if (!product?.image_url) return 'https://placehold.co/400x600?text=No+Preview';
+    if (!product) return 'https://placehold.co/400x600?text=No+Preview';
     
-    if (product.image_url.startsWith('data:image')) {
-      return product.image_url;
+    if (product.image_url) {
+      if (typeof product.image_url === 'string' && product.image_url.startsWith('data:image')) {
+        return product.image_url;
+      }
+      if (typeof product.image_url === 'string' && product.image_url.startsWith('http')) {
+        return product.image_url;
+      }
+      if (typeof product.image_url === 'string') {
+        return product.image_url;
+      }
     }
     
-    const time = product.updated_at ? new Date(product.updated_at).getTime() : new Date().getTime();
-    return `${product.image_url}?t=${time}`;
+    if (product.content) {
+      let content = product.content;
+      if (typeof content === 'string') {
+        try {
+          content = JSON.parse(content);
+        } catch (e) {
+        }
+      }
+      
+      if (content && content.preview) {
+        return content.preview;
+      }
+      
+      if (content && content.image_url) {
+        return content.image_url;
+      }
+    }
+    
+    return 'https://placehold.co/400x600?text=No+Preview';
+  };
+
+  const handleImageError = (productId) => {
+    console.log("Image error for:", productId);
+    setImageErrors(prev => ({ ...prev, [productId]: true }));
   };
 
   const handleView = (product) => {
@@ -145,50 +176,91 @@ const AllProducts = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredTemplates.map((product) => (
-              <tr key={product.id} className="hover:bg-blue-50/40 transition-all">
-                <td className="px-6 py-4 font-mono text-xs text-gray-500">
-                  #{String(product.id).slice(0, 8)}
-                </td>
-                <td className="px-6 py-4">
-                  <div className="w-16 h-16 rounded bg-gray-100 border overflow-hidden flex items-center justify-center">
-                    <img 
-                      src={getImageUrl(product)} 
-                      alt="" 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => { e.target.src = 'https://placehold.co/400x600?text=Error'; }}
-                    />
-                  </div>
-                </td>
-                <td className="px-6 py-4 font-semibold text-slate-700">{product.name}</td>
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold uppercase">{product.category || "General"}</span>
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <div className="flex justify-center gap-2">
-                    <button onClick={() => handleView(product)} title="View Design" className="p-2 text-green-600 hover:bg-green-50 rounded-lg"><Eye size={18} /></button>
-                    <button onClick={() => handleEdit(product.id)} title="Edit Design" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><PenIcon size={18} /></button>
-                    <button onClick={() => deleteDesign(product.id)} title="Delete Design" className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash size={18} /></button>
-                  </div>
+            {filteredTemplates.length > 0 ? (
+              filteredTemplates.map((product) => (
+                <tr key={product.id} className="hover:bg-blue-50/40 transition-all">
+                  <td className="px-6 py-4 font-mono text-xs text-gray-500">
+                    #{String(product.id).slice(0, 8)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="w-16 h-16 rounded bg-gray-100 border overflow-hidden flex items-center justify-center">
+                      {!imageErrors[product.id] ? (
+                        <img 
+                          src={getImageUrl(product)} 
+                          alt={product.name || "Design"}
+                          className="w-full h-full object-cover"
+                          onError={() => handleImageError(product.id)}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs text-center p-1">
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-semibold text-slate-700">{product.name || "Untitled"}</td>
+                  <td className="px-6 py-4">
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold uppercase">
+                      {product.category || "General"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex justify-center gap-2">
+                      <button 
+                        onClick={() => handleView(product)} 
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(product.id)} 
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      >
+                        <PenIcon size={18} />
+                      </button>
+                      <button 
+                        onClick={() => deleteDesign(product.id)} 
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                  No designs found matching your criteria.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
-     
       <div className="grid grid-cols-1 gap-4 md:hidden">
         {filteredTemplates.length > 0 ? (
           filteredTemplates.map((product) => (
             <div key={product.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-lg bg-gray-50 border overflow-hidden flex-shrink-0 flex items-center justify-center">
-                  <img src={getImageUrl(product)} alt="" className="w-full h-full object-cover" />
+                  {!imageErrors[product.id] ? (
+                    <img 
+                      src={getImageUrl(product)} 
+                      alt={product.name || "Design"}
+                      className="w-full h-full object-cover"
+                      onError={() => handleImageError(product.id)}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs text-center p-1">
+                      No Image
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-mono text-gray-400">#{String(product.id).slice(0, 8)}</p>
-                  <h3 className="font-bold text-slate-800 truncate">{product.name}</h3>
+                  <h3 className="font-bold text-slate-800 truncate">{product.name || "Untitled"}</h3>
                   <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold uppercase border border-blue-100">
                     {product.category || "General"}
                   </span>
@@ -196,13 +268,22 @@ const AllProducts = () => {
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                 <div className="flex gap-2 w-full justify-between">
-                  <button onClick={() => handleView(product)} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-md text-xs font-semibold border border-green-100">
+                  <button 
+                    onClick={() => handleView(product)} 
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-md text-xs font-semibold border border-green-100"
+                  >
                     <Eye size={14} /> View
                   </button>
-                  <button onClick={() => handleEdit(product.id)} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold border border-blue-100">
+                  <button 
+                    onClick={() => handleEdit(product.id)} 
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold border border-blue-100"
+                  >
                     <PenIcon size={14} /> Edit
                   </button>
-                  <button onClick={() => deleteDesign(product.id)} className="p-2 bg-red-50 text-red-700 rounded-md border border-red-100">
+                  <button 
+                    onClick={() => deleteDesign(product.id)} 
+                    className="p-2 bg-red-50 text-red-700 rounded-md border border-red-100"
+                  >
                     <Trash size={14} />
                   </button>
                 </div>
@@ -215,7 +296,6 @@ const AllProducts = () => {
           </div>
         )}
       </div>
-
 
       {isViewModal && selectedProduct && (
         <div
@@ -246,11 +326,21 @@ const AllProducts = () => {
 
             <div className="flex-1 bg-gray-100 flex items-center justify-center p-4 sm:p-10 overflow-hidden">
               <div className="relative w-full h-full flex items-center justify-center">
-                <img
-                  src={getImageUrl(selectedProduct)}
-                  alt="Design Preview"
-                  className="max-w-full max-h-full object-contain rounded-md shadow-2xl bg-white transition-all duration-300"
-                />
+                {!imageErrors[selectedProduct.id] ? (
+                  <img
+                    src={getImageUrl(selectedProduct)}
+                    alt={selectedProduct.name || "Design Preview"}
+                    className="max-w-full max-h-full object-contain rounded-md shadow-2xl bg-white"
+                    onError={() => handleImageError(selectedProduct.id)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 rounded-md">
+                    <div className="text-center">
+                      <p className="text-lg font-semibold">No Preview Available</p>
+                      <p className="text-sm mt-2">The image could not be loaded</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

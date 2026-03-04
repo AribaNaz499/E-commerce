@@ -13,7 +13,7 @@ import UserHome from './components/pages/UserHome'
 import AllDesigns from './components/pages/AllDesigns'
 import CategoryPage from './components/pages/CategoryPage'
 import UserEditDesign from './components/pages/UserEditDesign'
-
+import CardPreview from './components/pages/CardPreview'
 const LayoutManager = ({ children, role }) => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith("/admin-portal");
@@ -97,7 +97,7 @@ const App = () => {
               <Route path="/all-designs" element={<AllDesigns />} />
               <Route path="/category/:categoryName" element={<CategoryPage />} />
               <Route path="/design-editor/:id" element={<UserEditDesign />} />
-
+       <Route path="/card-preview" element={<CardPreview />} /><Route path="/card-preview" element={<CardPreview />} />
               {role === 'admin' && (
                 <>
                   <Route path="/admin-portal" element={<Dashboard />} />

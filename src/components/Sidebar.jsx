@@ -58,7 +58,7 @@ useEffect(() => {
         ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
         
-        {/* Logo Section */}
+      
         <div className="p-6 flex items-center gap-3">
           <div className="bg-blue-600 p-2 rounded-xl text-white shadow-blue-200 shadow-lg">
             <LayoutGrid size={20} />

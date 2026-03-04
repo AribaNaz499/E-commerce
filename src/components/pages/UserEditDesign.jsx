@@ -5,151 +5,222 @@ import { CanvasContext } from "../../context/CanvasContext";
 import CanvasArea from "../../components/editor/CanvasArea";
 import ToolPanel from "../../components/editor/ToolPanel";
 import { 
-  ImageIcon, Type, Smile, ArrowLeft, Layout, 
-  ChevronLeft, ChevronRight 
+  ImageIcon, Type, Smile, ArrowLeft, Layout, Lock, X 
 } from 'lucide-react';
 
 const UserEditDesign = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const context = useContext(CanvasContext);
-  
+
   if (!context) return <div className="h-screen flex items-center justify-center font-bold">Context Error!</div>;
 
   const { 
-    elements, setElements, 
-    setCanvasBg, 
-    orientation, setOrientation, 
-    activeTool, setActiveTool, 
-    isToolPanelOpen, setIsToolPanelOpen 
+    elements, setElements,
+    setCanvasBg, canvasBg,
+    orientation, setOrientation,
+    activeTool, setActiveTool,
+    isToolPanelOpen, setIsToolPanelOpen,
+    addText, addSticker, handleImageUpload,
+    imageInputRef, setSelectedId
   } = context;
-  
+
   const [fetching, setFetching] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(1);
-  const [slidesData, setSlidesData] = useState({ 1: [], 2: [], 3: [], 4: [] });
+  
+  const [slidesData, setSlidesData] = useState({ 
+    1: { elements: [], bg: "#ffffff" }, 
+    2: { elements: [], bg: "#ffffff" }, 
+    3: { elements: [], bg: "#ffffff" }, 
+    4: { elements: [], bg: "#ffffff" } 
+  });
+  
+  const [scale, setScale] = useState(1);
+  const [designName, setDesignName] = useState("");
+
+  const isLockedSlide = currentSlide === 1 || currentSlide === 4;
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const sidebarWidth = width >= 768 ? 80 : 0;
+      const panelWidth = (isToolPanelOpen && width >= 768) ? 320 : 0;
+      const availableWidth = width - sidebarWidth - panelWidth - 60;
+      const baseWidth = orientation === 'portrait' ? 400 : 700;
+      setScale(Math.min(availableWidth / baseWidth, 0.9));
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [orientation, isToolPanelOpen]);
 
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
+      setFetching(true);
       try {
         const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
         if (error) throw error;
-        
+
         if (data) {
-         
-          let forcedOrientation = data.orientation || data.content?.orientation;
-
-          if (!forcedOrientation && data.content?.elements) {
-            const elements = data.content.elements;
-            const isWide = elements.some(el => (el.x + (el.width || 0)) > 400);
-            forcedOrientation = isWide ? 'landscape' : 'portrait';
-          }
-
-          setOrientation(forcedOrientation || "portrait");
+          setDesignName(data.name || "Untitled Design");
+          const savedOrientation = data.orientation || data.content?.orientation || "portrait";
+          setOrientation(savedOrientation);
           
-          setCanvasBg(data.content?.canvasBg || "#ffffff");
-          
-        
-          const initialElements = data.content?.elements || [];
-          setSlidesData(prev => ({ ...prev, 1: initialElements }));
-          setElements(initialElements);
+          let initialElements = data.content?.elements || data.elements || [];
+          const processed = initialElements.map((el, i) => ({
+            ...el,
+            id: el.id ? String(el.id) : `el-${Date.now()}-${i}`
+          }));
+
+          const logoElement = {
+            id: 'permanent-logo',
+            type: 'image',
+            src: 'https://placehold.co/100x100?text=Logo', 
+            x: 150, y: 400, width: 100, height: 100,
+            draggable: false, isFixed: true
+          };
+
+          setSlidesData({ 
+            1: { elements: processed, bg: "#ffffff" }, 
+            2: { elements: [], bg: "#ffffff" }, 
+            3: { elements: [], bg: "#ffffff" }, 
+            4: { elements: [logoElement], bg: "#ffffff" } 
+          });
+
+          setElements(processed);
+          setCanvasBg("#ffffff");
         }
-      } catch (err) { 
-        console.error("Fetch Error:", err); 
-      } finally { 
-        setFetching(false); 
+      } catch (err) {
+        console.error("Load error:", err);
+      } finally {
+        setFetching(false);
       }
     };
     loadData();
-  }, [id, setOrientation, setCanvasBg, setElements]);
+  }, [id]);
 
-  useEffect(() => {
-    if (!fetching) {
-      setSlidesData(prev => ({ ...prev, [currentSlide]: elements }));
+
+
+ 
+  const handleSlideChange = (nextSlide) => {
+    if (nextSlide === currentSlide) return;
+
+   
+    setSlidesData(prev => ({
+      ...prev,
+      [currentSlide]: { elements: [...elements], bg: canvasBg }
+    }));
+
+    
+    const nextData = slidesData[nextSlide] || { elements: [], bg: "#ffffff" };
+    
+   
+    setElements([...(nextData.elements || [])]);
+    
+   
+    if (nextSlide === 1 || nextSlide === 4) {
+      setCanvasBg("#ffffff");
+    } else {
+      setCanvasBg(nextData.bg || "#ffffff");
     }
-  }, [elements, fetching, currentSlide]);
 
-  const handleSlideChange = (nextSlideId) => {
-    setElements(slidesData[nextSlideId] || []);
-    setCurrentSlide(nextSlideId);
-    setActiveTool(null);
+    setCurrentSlide(nextSlide);
+    setSelectedId(null);
     setIsToolPanelOpen(false);
   };
 
-  const handleToolClick = (tool) => {
-    if (currentSlide === 1 || currentSlide === 4) return; 
-    if (activeTool === tool && isToolPanelOpen) {
-      setIsToolPanelOpen(false);
-      setActiveTool(null);
-    } else {
-      setActiveTool(tool);
-      setIsToolPanelOpen(true);
-    }
+
+  const handleBgChange = (newColor) => {
+    if (isLockedSlide) return; 
+    setCanvasBg(newColor);
   };
 
-  if (fetching) return (
-    <div className="h-screen w-full flex items-center justify-center bg-white">
-      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+
+  const handlePreview = () => {
+  const finalSlidesData = {
+    ...slidesData,
+    [currentSlide]: { elements: [...elements], bg: canvasBg }
+  };
+
+  navigate('/card-preview', { 
+    state: { 
+      allSlides: finalSlidesData,
+      orientation: orientation,
+      designName: designName 
+    } 
+  });
+};
+
+  if (fetching) return <div className="h-screen flex items-center justify-center">Loading Design...</div>;
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
-      <nav className="h-16 bg-white border-b px-6 flex items-center justify-between z-50 shadow-sm">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 font-bold hover:text-blue-600">
-          <ArrowLeft size={18}/> Back
+      {/* Navbar */}
+      <nav className="h-16 bg-white border-b px-4 flex items-center justify-between z-50">
+        <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-blue-600">
+          <ArrowLeft size={20}/>
         </button>
         
-        <div className="flex bg-slate-100 p-1 rounded-xl border">
+        <div className="flex bg-slate-100 p-1 rounded-xl">
           {[1, 2, 3, 4].map((num) => (
             <button 
               key={num} 
-              onClick={() => handleSlideChange(num)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${currentSlide === num ? 'bg-white shadow text-blue-600' : 'text-slate-400'}`}>
-              {num === 1 ? 'Front' : num === 4 ? 'Back' : `Side ${num}`}
+              onClick={() => handleSlideChange(num)} 
+              className={`w-12 h-12 rounded-lg text-sm font-black transition-all ${
+                currentSlide === num ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              {num === 1 ? 'F' : num === 4 ? 'B' : num}
             </button>
           ))}
         </div>
         
-        <button className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-xs">Order Now</button>
+        <button   onClick ={handlePreview}
+        className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-xs uppercase shadow-lg">
+          Preview
+        </button>
       </nav>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        
         <aside className="w-20 bg-white border-r flex flex-col items-center py-8 gap-8 z-40">
-          <SidebarBtn icon={<ImageIcon/>} label="Media" active={activeTool === 'image'} onClick={() => handleToolClick('image')} />
-          <SidebarBtn icon={<Type/>} label="Text" active={activeTool === 'text'} onClick={() => handleToolClick('text')} />
-          <SidebarBtn icon={<Smile/>} label="Stickers" active={activeTool === 'sticker'} onClick={() => handleToolClick('sticker')} />
-          <SidebarBtn icon={<Layout/>} label="Layout" active={activeTool === 'layout'} onClick={() => handleToolClick('layout')} />
+          <SidebarBtn icon={<ImageIcon/>} active={activeTool === 'image'} onClick={() => {setActiveTool('image'); setIsToolPanelOpen(true);}} disabled={isLockedSlide} />
+          <SidebarBtn icon={<Type/>} active={activeTool === 'text'} onClick={() => {setActiveTool('text'); setIsToolPanelOpen(true);}} disabled={isLockedSlide} />
+          <SidebarBtn icon={<Smile/>} active={activeTool === 'sticker'} onClick={() => {setActiveTool('sticker'); setIsToolPanelOpen(true);}} disabled={isLockedSlide} />
+          <SidebarBtn icon={<Layout/>} active={activeTool === 'layout'} onClick={() => {setActiveTool('layout'); setIsToolPanelOpen(true);}} disabled={isLockedSlide} />
         </aside>
 
-        {isToolPanelOpen && (
-          <div className="w-80 h-full bg-white border-r shadow-2xl z-30 flex-shrink-0">
-             <ToolPanel />
+        
+        {isToolPanelOpen && !isLockedSlide && (
+          <div className="w-80 bg-white border-r shadow-xl z-30 animate-in slide-in-from-left duration-200">
+            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+              <span className="font-bold text-xs uppercase tracking-widest">{activeTool}</span>
+              <button onClick={() => setIsToolPanelOpen(false)}><X size={18}/></button>
+            </div>
+            <ToolPanel 
+              addText={addText} 
+              addSticker={addSticker} 
+              handleImageUpload={handleImageUpload} 
+              imageInputRef={imageInputRef}
+              canvasBg={canvasBg} 
+              setCanvasBg={handleBgChange} 
+              activeTool={activeTool}
+            />
           </div>
         )}
 
-        <main className="flex-1 flex flex-col items-center justify-center p-8 relative bg-[#F1F5F9]">
-          
-        
-          <div className={`relative transition-all duration-500 ease-in-out flex items-center justify-center
-            ${orientation === 'portrait' ? 'h-[550px] aspect-[4/5]' : 'w-[700px] aspect-[1.5/1]'}
-            ${isToolPanelOpen ? 'scale-90 -translate-x-4' : 'scale-100'}`}
-          >
-            <div className="absolute inset-4 bg-black/10 blur-[60px] rounded-full -z-10 translate-y-12"></div>
-            
-            <div className="h-full w-full bg-white rounded-2xl shadow-2xl border-[12px] border-white overflow-hidden relative flex items-center justify-center">
-              <CanvasArea />
+      
+        <main className="flex-1 flex items-center justify-center bg-[#F1F5F9] p-10 overflow-auto">
+          <div style={{ transform: `scale(${scale})`, transition: 'transform 0.2s ease-out' }}>
+            <div className="bg-white shadow-2xl rounded-2xl border-[15px] border-white relative">
+              {isLockedSlide && (
+                <div className="absolute top-4 left-4 z-50 bg-black/80 text-white px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-2 backdrop-blur-md">
+                  <Lock size={12} /> {currentSlide === 1 ? "Front Cover" : "Back Cover"}
+                </div>
+              )}
+              <CanvasArea elements={elements} />
             </div>
-          </div>
-
-          <div className="absolute bottom-10 flex items-center gap-10">
-            <button disabled={currentSlide === 1} onClick={() => handleSlideChange(currentSlide - 1)} className="p-3 bg-white rounded-full shadow-lg disabled:opacity-20"><ChevronLeft/></button>
-            <div className="flex gap-2.5">
-              {[1, 2, 3, 4].map(n => (
-                <div key={n} className={`h-2 rounded-full transition-all duration-500 ${currentSlide === n ? 'w-10 bg-blue-500' : 'w-2 bg-slate-300'}`} />
-              ))}
-            </div>
-            <button disabled={currentSlide === 4} onClick={() => handleSlideChange(currentSlide + 1)} className="p-3 bg-white rounded-full shadow-lg disabled:opacity-20"><ChevronRight/></button>
           </div>
         </main>
       </div>
@@ -157,10 +228,15 @@ const UserEditDesign = () => {
   );
 };
 
-const SidebarBtn = ({ icon, label, active, onClick }) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1.5 w-full py-2 ${active ? 'text-blue-600' : 'text-slate-400'}`}>
-    <div className={`p-3.5 rounded-2xl ${active ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>{icon}</div>
-    <span className="text-[9px] font-black uppercase">{label}</span>
+const SidebarBtn = ({ icon, active, onClick, disabled }) => (
+  <button 
+    onClick={onClick} 
+    disabled={disabled}
+    className={`p-3 rounded-xl transition-all ${
+      active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'
+    } ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
+  >
+    {React.cloneElement(icon, { size: 24 })}
   </button>
 );
 

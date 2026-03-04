@@ -6,12 +6,10 @@ import { supabase } from "../../supabase/client";
 const UserNavbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-  
     } catch (error) {
       console.error('Logout error:', error.message);
     }
@@ -73,9 +71,6 @@ const UserNavbar = () => {
             <Search size={18} />
           </button>
           <button className="hidden sm:block hover:opacity-70 transition-opacity">
-            <User size={18} />
-          </button>
-          <button className="hidden sm:block hover:opacity-70 transition-opacity">
             <Heart size={18} />
           </button>
           <button className="hover:opacity-70 transition-opacity relative">
@@ -87,7 +82,7 @@ const UserNavbar = () => {
 
           <button 
             onClick={handleLogout}
-            className="hover:text-red-600 transition-all"
+            className="hidden md:block hover:text-red-600 transition-all"
             title="Logout"
           >
             <LogOut size={18} />
@@ -105,7 +100,7 @@ const UserNavbar = () => {
       </nav>
 
       {isMenuOpen && (
-        <div className="md:hidden bg-white mt-2 rounded-xl p-4 shadow-lg flex flex-col gap-3 font-semibold text-gray-800">
+        <div className="md:hidden bg-white mt-2 rounded-xl p-4 shadow-lg flex flex-col gap-3 font-semibold text-gray-800 relative z-50">
           <a href="/" onClick={() => setIsMenuOpen(false)}>
             Home
           </a>
