@@ -226,7 +226,7 @@ const NewProduct = () => {
                  <X size={24} />
                </button>
              </div>
-             <ToolPanel />
+             <ToolPanel isAdmin={true} />
           </div>
         )}
       </div>

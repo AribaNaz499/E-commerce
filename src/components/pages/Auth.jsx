@@ -5,23 +5,46 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     setEmail('');
     setPassword('');
-  }, []);
+  }, [isRegistering]);
 
-  const handleLogin = async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
+      if (isRegistering) {
+      
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        
+       
+        if (data?.user) {
+          await supabase.from('profiles').insert([{ id: data.user.id, email, role: 'user' }]);
+        }
+        alert('Check your email to confirm registration!');
+      } else {
+        
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
 
       setEmail('');
       setPassword('');
@@ -33,51 +56,72 @@ const Auth = () => {
     }
   };
 
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+          <h2 className="text-2xl font-bold text-rose-800 mb-4">Logged In!</h2>
+          <p className="mb-6">{user.email}</p>
+          <button onClick={() => supabase.auth.signOut()} className="w-full bg-slate-800 text-white py-3 rounded-xl">
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-        <h2 className="text-3xl font-bold text-center text-rose-800 mb-2">Welcome Back</h2>
-        <p className="text-center text-slate-500 mb-8 text-sm">Log in to your account</p>
+        <h2 className="text-3xl font-bold text-center text-rose-800 mb-2">
+          {isRegistering ? "Create Account" : "Welcome Back"}
+        </h2>
         
-        <form onSubmit={handleLogin} className="space-y-5" autoComplete="off">
+        <form 
+          key={isRegistering ? 'register' : 'login'} 
+          onSubmit={handleAuth} 
+          className="space-y-5" 
+          autoComplete="off"
+        >
           <div>
-            <label className="block text-xs font-bold text-rose-700 uppercase tracking-wider mb-2">Email Address</label>
+            <label className="block text-xs font-bold text-rose-700 uppercase mb-2">Email Address</label>
             <input 
               type="email" 
-              name={`email_${Math.random()}`} 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-slate-50 focus:ring-2 focus:ring-rose-500"
               placeholder="email@example.com"
+              autoComplete="new-password" 
               required
-              autoComplete="new-email" 
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-rose-700 uppercase tracking-wider mb-2">Password</label>
+            <label className="block text-xs font-bold text-rose-700 uppercase mb-2">Password</label>
             <input 
               type="password" 
-              name={`pass_${Math.random()}`} 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-slate-50 focus:ring-2 focus:ring-rose-500"
               placeholder="••••••••"
+              autoComplete="new-password"
               required
-              autoComplete="new-password" 
             />
           </div>
           
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-rose-800 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-rose-700 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full bg-rose-800 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-all disabled:opacity-50"
           >
-            {loading ? "Checking..." : "Login"}
+            {loading ? "Processing..." : (isRegistering ? "Register" : "Login")}
           </button>
         </form>
 
-        <p className="text-center mt-6 text-sm text-rose-700 font-medium cursor-pointer hover:underline">
-        Register Now
+        <p 
+          onClick={() => setIsRegistering(!isRegistering)}
+          className="text-center mt-6 text-sm text-rose-700 font-medium cursor-pointer hover:underline"
+        >
+          {isRegistering ? "Already have an account? Log in" : "Don't have an account? Register Now"}
         </p>
       </div>
     </div>

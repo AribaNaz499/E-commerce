@@ -64,16 +64,20 @@ export const CanvasProvider = ({ children }) => {
   };
 
  
-  const handleImageUpload = (file) => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
+ const handleImageUpload = (file) => {
+  if (!file) return;
+
+  const reader = new FileReader();
+  
+  reader.onload = () => {
+    const base64Data = reader.result; 
 
     const img = new Image();
     img.onload = () => {
       const newImage = {
-        id: createId(),
+        id: `img-${Date.now()}`,
         type: "image",
-        src: url,
+        src: base64Data, 
         x: 100,
         y: 100,
         width: 250,
@@ -85,8 +89,11 @@ export const CanvasProvider = ({ children }) => {
       };
       setElements((prev) => [...prev, newImage]);
     };
-    img.src = url;
+    img.src = base64Data;
   };
+
+  reader.readAsDataURL(file); 
+};
 
 
   const handleVideoUpload = async (file) => {

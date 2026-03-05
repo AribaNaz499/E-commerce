@@ -2,7 +2,7 @@ import React, { useContext } from "react";
 import { X, Music, Video, Image as ImageIcon, Smartphone, Monitor } from "lucide-react";
 import { CanvasContext } from "../../context/CanvasContext";
 
-const ToolPanel = () => {
+const ToolPanel = ({ isAdmin = false }) => {
   const {
     activeTool,
     setActiveTool,
@@ -25,21 +25,20 @@ const ToolPanel = () => {
 
   const colors = ["#ffffff", "#f87171", "#fbbf24", "#34d399", "#60a5fa", "#c084fc", "#f472b6", "#000000"];
 
-  const stickers = [
-    "https://img.icons8.com/emoji/96/000000/star.png",
-    "https://img.icons8.com/emoji/96/000000/heart.png",
-    "https://img.icons8.com/emoji/96/000000/smiling-face.png",
-    "https://img.icons8.com/emoji/96/000000/party-popper.png",
-    "https://img.icons8.com/emoji/96/000000/fire.png",
-    "https://img.icons8.com/emoji/96/000000/sun.png",
-    "https://img.icons8.com/emoji/96/000000/moon.png",
-    "https://img.icons8.com/emoji/96/000000/cloud.png",
-    "https://img.icons8.com/emoji/96/000000/crown.png",
-    "https://img.icons8.com/emoji/96/000000/gift.png",
-    "https://img.icons8.com/emoji/96/000000/balloon.png",
-    "https://img.icons8.com/emoji/96/000000/cake.png",
-  ];
-
+const stickers = [
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Panda/3D/panda_3d.png",           // Panda
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Cat%20face/3D/cat_face_3d.png",   // Cat
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Rabbit%20face/3D/rabbit_face_3d.png", // Rabbit
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Unicorn/3D/unicorn_3d.png",       // Unicorn
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Star/3D/star_3d.png",             // Star
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Heart%20with%20ribbon/3D/heart_with_ribbon_3d.png", // Heart
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Smiling%20face%20with%20hearts/3D/smiling_face_with_hearts_3d.png", // Cute Face
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Party%20popper/3D/party_popper_3d.png", // Party
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Crown/3D/crown_3d.png",           // Crown
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Balloon/3D/balloon_3d.png",       // Balloon
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Birthday%20cake/3D/birthday_cake_3d.png", // Cake
+  "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Sun/3D/sun_3d.png"                // Sun
+];
   const handleClose = () => {
     setActiveTool(null);
     setIsToolPanelOpen(false);
@@ -51,9 +50,10 @@ const ToolPanel = () => {
 
   const renderContent = () => {
     switch (activeTool) {
-      case "layout":
-        return (
-          <div className="space-y-6">
+    case "layout":
+      return (
+        <div className="space-y-6">
+          {isAdmin && (
             <div>
               <p className="text-sm text-gray-500 mb-3">Orientation:</p>
               <div className="flex gap-3">
@@ -81,23 +81,25 @@ const ToolPanel = () => {
                 </button>
               </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 mb-3">Background Color:</p>
-              <div className="grid grid-cols-4 gap-3">
-                {colors.map((color, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCanvasBg(color)}
-                    className={`aspect-square rounded-xl border-2 hover:scale-105 transition-transform ${
-                      canvasBg === color ? "border-purple-600 scale-105" : "border-gray-200"
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
+          )}
+
+          <div>
+            <p className="text-sm text-gray-500 mb-3">Background Color:</p>
+            <div className="grid grid-cols-4 gap-3">
+              {colors.map((color, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCanvasBg(color)}
+                  className={`aspect-square rounded-xl border-2 hover:scale-105 transition-transform ${
+                    canvasBg === color ? "border-purple-600 scale-105" : "border-gray-200"
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
             </div>
           </div>
-        );
+        </div>
+      );
 
       case "text":
         return (

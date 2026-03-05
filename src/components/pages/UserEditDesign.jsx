@@ -4,6 +4,7 @@ import { supabase } from "../../supabase/client";
 import { CanvasContext } from "../../context/CanvasContext";
 import CanvasArea from "../../components/editor/CanvasArea";
 import ToolPanel from "../../components/editor/ToolPanel";
+import LogoImg from "../../assets/images/logo.png";
 import { 
   ImageIcon, Type, Smile, ArrowLeft, Layout, Lock, X 
 } from 'lucide-react';
@@ -76,7 +77,7 @@ const UserEditDesign = () => {
           const logoElement = {
             id: 'permanent-logo',
             type: 'image',
-            src: 'https://placehold.co/100x100?text=Logo', 
+            src: LogoImg, 
             x: 150, y: 400, width: 100, height: 100,
             draggable: false, isFixed: true
           };
@@ -156,7 +157,6 @@ const UserEditDesign = () => {
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
-      {/* Navbar */}
       <nav className="h-16 bg-white border-b px-4 flex items-center justify-between z-50">
         <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-blue-600">
           <ArrowLeft size={20}/>
@@ -194,11 +194,9 @@ const UserEditDesign = () => {
         
         {isToolPanelOpen && !isLockedSlide && (
           <div className="w-80 bg-white border-r shadow-xl z-30 animate-in slide-in-from-left duration-200">
-            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-              <span className="font-bold text-xs uppercase tracking-widest">{activeTool}</span>
-              <button onClick={() => setIsToolPanelOpen(false)}><X size={18}/></button>
-            </div>
+            
             <ToolPanel 
+            isAdmin={false}
               addText={addText} 
               addSticker={addSticker} 
               handleImageUpload={handleImageUpload} 

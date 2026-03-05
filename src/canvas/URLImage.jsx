@@ -1,14 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Image as KonvaImage, Transformer, Group, Rect, Text } from 'react-konva';
+import { Image as KonvaImage, Group, Rect, Text } from 'react-konva';
 
 const URLImage = ({ el, isSelected, onSelect, onChange }) => {
   const shapeRef = useRef();
-  const trRef = useRef();
-  const [isCropping, setIsCropping] = useState(false);
-  const [cropPreview, setCropPreview] = useState(null);
   const [imageObj, setImageObj] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCropping, setIsCropping] = useState(false);
 
   useEffect(() => {
     if (!el?.src) {
@@ -19,11 +17,14 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
 
     setIsLoading(true);
     setImageError(false);
-    
+
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
+    if (typeof el.src === 'string' && el.src.startsWith('http')) {
+      img.crossOrigin = "anonymous";
+    }
+
     img.src = el.src;
-    
+
     img.onload = () => {
       setImageObj(img);
       setIsLoading(false);
@@ -37,13 +38,13 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         });
       }
     };
-    
+
     img.onerror = (err) => {
-      console.error("Failed to load image:", el.src, err);
+      console.error("❌ Image Load Failed:", el.src, err);
       setImageError(true);
       setIsLoading(false);
     };
-    
+
     return () => {
       img.onload = null;
       img.onerror = null;
@@ -51,22 +52,9 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
   }, [el?.src]);
 
   const handleDoubleClick = (e) => {
+    if (el.isFixed) return;
     e.cancelBubble = true;
-    setIsCropping(true);
-  };
-
-  const handleTransform = () => {
-    if (isCropping) {
-      const node = shapeRef.current;
-      const scaleX = node.scaleX();
-      const scaleY = node.scaleY();
-      setCropPreview({
-        x: node.x(),
-        y: node.y(),
-        width: node.width() * scaleX,
-        height: node.height() * scaleY,
-      });
-    }
+    setIsCropping(!isCropping);
   };
 
   const handleTransformEnd = () => {
@@ -74,77 +62,61 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
     
+    
     node.scaleX(1);
     node.scaleY(1);
 
+    const newWidth = Math.max(20, node.width() * scaleX);
+    const newHeight = Math.max(20, node.height() * scaleY);
+
     if (isCropping) {
-      const newWidth = node.width() * scaleX;
-      const newHeight = node.height() * scaleY;
-      const cropX = el.crop.x + ((node.x() - el.x) * (el.crop.width / el.width));
-      const cropY = el.crop.y + ((node.y() - el.y) * (el.crop.height / el.height));
+      const dx = node.x() - el.x;
+      const dy = node.y() - el.y;
+
+    
+      const cropX = el.crop.x + (dx * (el.crop.width / el.width));
+      const cropY = el.crop.y + (dy * (el.crop.height / el.height));
       
+      const cropWidth = el.crop.width * scaleX;
+      const cropHeight = el.crop.height * scaleY;
+
       onChange({
         ...el,
-        crop: {
-          x: Math.max(0, Math.min(el.originalWidth - el.crop.width, cropX)),
-          y: Math.max(0, Math.min(el.originalHeight - el.crop.height, cropY)),
-          width: el.crop.width * (newWidth / el.width),
-          height: el.crop.height * (newHeight / el.height),
-        },
         x: node.x(),
         y: node.y(),
         width: newWidth,
         height: newHeight,
+        crop: {
+          x: cropX,
+          y: cropY,
+          width: cropWidth,
+          height: cropHeight,
+        }
       });
-      setCropPreview(null);
     } else {
+      
       onChange({
         ...el,
         x: node.x(),
         y: node.y(),
-        width: Math.max(20, node.width() * scaleX),
-        height: Math.max(20, node.height() * scaleY),
+        width: newWidth,
+        height: newHeight,
         rotation: node.rotation(),
       });
     }
   };
 
   const handleDragEnd = (e) => {
-    if (!isCropping) {
-      onChange({ ...el, x: e.target.x(), y: e.target.y() });
-    }
+    onChange({ ...el, x: e.target.x(), y: e.target.y() });
   };
 
   const applyCrop = (e) => {
-    e.cancelBubble = true;
+    if (e) e.cancelBubble = true;
     setIsCropping(false);
-    setCropPreview(null);
   };
 
-  useEffect(() => {
-    if (isSelected && trRef.current && shapeRef.current && !isCropping) {
-      trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
-    }
-  }, [isSelected, isCropping]);
-
-  if (isLoading) {
-    return (
-      <Group>
-        <Rect x={el.x} y={el.y} width={el.width} height={el.height} fill="#f3f4f6" stroke="#9ca3af" strokeWidth={1} dash={[5, 5]} cornerRadius={4} />
-        <Text x={el.x + 10} y={el.y + el.height/2 - 10} text="Loading..." fontSize={12} fill="#6b7280" />
-      </Group>
-    );
-  }
-
-  if (imageError || !imageObj) {
-    return (
-      <Group>
-        <Rect x={el.x} y={el.y} width={el.width} height={el.height} fill="#fee2e2" stroke="#ef4444" strokeWidth={2} dash={[5, 5]} cornerRadius={4} />
-        <Text x={el.x + 10} y={el.y + el.height/2 - 10} text="Image Error" fontSize={12} fill="#ef4444" fontStyle="bold" />
-      </Group>
-    );
-  }
+  if (isLoading) return <Group x={el.x} y={el.y}><Rect width={el.width} height={el.height} fill="#f1f5f9" /></Group>;
+  if (imageError || !imageObj) return <Group x={el.x} y={el.y}><Rect width={el.width} height={el.height} fill="#fef2f2" /></Group>;
 
   return (
     <Group>
@@ -157,26 +129,32 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
         width={el.width}
         height={el.height}
         crop={el.crop}
-        draggable={!isCropping}
+        rotation={el.rotation || 0}
+        draggable={!el.isFixed && !isCropping}
         onClick={onSelect}
         onTap={onSelect}
         onDblClick={handleDoubleClick}
-        onTransform={handleTransform}
         onTransformEnd={handleTransformEnd}
         onDragEnd={handleDragEnd}
-        rotation={el.rotation || 0}
       />
+
       {isCropping && (
         <Group>
-          <KonvaImage image={imageObj} x={el.x} y={el.y} width={el.width} height={el.height} opacity={0.3} listening={false} />
-          <Rect x={el.x} y={el.y} width={el.width} height={el.height} fill="transparent" stroke="#fbbf24" strokeWidth={3} dash={[5, 5]} listening={false} />
-          {cropPreview && (
-            <Rect x={cropPreview.x} y={cropPreview.y} width={cropPreview.width} height={cropPreview.height} fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" strokeWidth={3} listening={false} />
-          )}
-          <Text x={el.x} y={el.y - 35} text="✂️ CROP MODE" fontSize={14} fill="#fbbf24" fontStyle="bold" listening={false} />
-          <Group x={el.x + el.width/2 - 70} y={el.y + el.height + 20} onClick={applyCrop} onTap={applyCrop}>
-            <Rect width={140} height={40} fill="#fbbf24" cornerRadius={20} />
-            <Text width={140} height={40} text="✓ APPLY CROP" fill="black" align="center" verticalAlign="middle" fontStyle="bold" />
+          <KonvaImage 
+            image={imageObj} 
+            x={el.x} y={el.y} 
+            width={el.width} height={el.height} 
+            opacity={0.2} listening={false} 
+          />
+          <Rect 
+            x={el.x} y={el.y} 
+            width={el.width} height={el.height} 
+            stroke="#f59e0b" strokeWidth={2} dash={[4, 4]} 
+            listening={false} 
+          />
+          <Group x={el.x + el.width/2 - 40} y={el.y + el.height + 10} onClick={applyCrop} onTap={applyCrop}>
+            <Rect width={80} height={25} fill="#f59e0b" cornerRadius={5} />
+            <Text width={80} height={25} text="Done" fill="white" align="center" verticalAlign="middle" fontStyle="bold" />
           </Group>
         </Group>
       )}

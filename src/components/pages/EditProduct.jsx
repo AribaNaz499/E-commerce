@@ -160,7 +160,8 @@ const EditProduct = () => {
           ) : <CanvasArea />}
         </div>
         {activeTool && !fetching && (
-          <div className="hidden md:block w-80 border-l bg-white h-full overflow-y-auto"><ToolPanel /></div>
+          <div className="hidden md:block w-80 border-l bg-white h-full overflow-y-auto"><ToolPanel
+          isAdmin={true} /></div>
         )}
       </div>
 
