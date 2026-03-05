@@ -165,28 +165,31 @@ export const CanvasProvider = ({ children }) => {
   };
 
   
-  const addSticker = (stickerUrl) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.onload = () => {
-      const newSticker = {
-        id: createId(),
-        type: "image",
-        src: stickerUrl,
-        x: 150,
-        y: 150,
-        width: 120,
-        height: 120,
-        originalWidth: img.width,
-        originalHeight: img.height,
-        crop: { x: 0, y: 0, width: img.width, height: img.height },
-        draggable: true,
-        isSticker: true,
-      };
-      setElements((prev) => [...prev, newSticker]);
+ // CanvasContext.jsx mein addSticker function update karein:
+const addSticker = (stickerUrl) => {
+  const img = new Image();
+  img.crossOrigin = "Anonymous";
+  img.onload = () => {
+    const id = createId();
+    const newSticker = {
+      id: id,
+      type: "image",
+      src: stickerUrl,
+      x: 50,
+      y: 50,
+      width: 150,
+      height: 150,
+      // Default crop values provide full image view
+      crop: { x: 0, y: 0, width: img.width, height: img.height },
+      draggable: true,
+      isSticker: true,
     };
-    img.src = stickerUrl;
+    setElements((prev) => [...prev, newSticker]);
+    // Foran select karein taake handlers dikhen
+    setSelectedId(id);
   };
+  img.src = stickerUrl;
+};
 
 
   const addText = () => {
