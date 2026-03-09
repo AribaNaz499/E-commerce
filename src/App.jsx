@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { supabase } from './supabase/client'
 import { CanvasProvider } from './context/CanvasContext'
+import { CartProvider } from './context/CartContext' // <-- CartProvider Import kiya
 
 import Auth from './components/pages/Auth'
 import Dashboard from './components/pages/Dashboard'
@@ -14,6 +15,8 @@ import AllDesigns from './components/pages/AllDesigns'
 import CategoryPage from './components/pages/CategoryPage'
 import UserEditDesign from './components/pages/UserEditDesign'
 import CardPreview from './components/pages/CardPreview'
+import AddToCart from './components/pages/AddToCart'
+
 const LayoutManager = ({ children, role }) => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith("/admin-portal");
@@ -64,7 +67,7 @@ const App = () => {
         .select('role')
         .eq('id', userId)
         .single();
-      
+
       if (error) throw error;
       setRole(data?.role);
     } catch (err) {
@@ -83,35 +86,40 @@ const App = () => {
 
   return (
     <Router>
-      <CanvasProvider>
-        {!session ? (
-          <Auth />
-        ) : (
-          <LayoutManager role={role}>
-            <Routes>
-              <Route 
-                path="/" 
-                element={role === 'admin' ? <Navigate to="/admin-portal" replace /> : <UserHome />} 
-              />
-              
-              <Route path="/all-designs" element={<AllDesigns />} />
-              <Route path="/category/:categoryName" element={<CategoryPage />} />
-              <Route path="/design-editor/:id" element={<UserEditDesign />} />
-       <Route path="/card-preview" element={<CardPreview />} /><Route path="/card-preview" element={<CardPreview />} />
-              {role === 'admin' && (
-                <>
-                  <Route path="/admin-portal" element={<Dashboard />} />
-                  <Route path="/admin-portal/all-products" element={<AllProducts />} />
-                  <Route path="/admin-portal/add-product" element={<AddProduct />} />
-                  <Route path="/admin-portal/edit/:id" element={<EditProduct />} />
-                </>
-              )}
+      {/* 1. CartProvider ko sabse bahar rakha taake Navbar isse use kar sake */}
+      <CartProvider> 
+        <CanvasProvider>
+          {!session ? (
+            <Auth />
+          ) : (
+            <LayoutManager role={role}>
+              <Routes>
+                <Route
+                  path="/"
+                  element={role === 'admin' ? <Navigate to="/admin-portal" replace /> : <UserHome />}
+                />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </LayoutManager>
-        )}
-      </CanvasProvider>
+                <Route path="/all-designs" element={<AllDesigns />} />
+                <Route path="/category/:categoryName" element={<CategoryPage />} />
+                <Route path="/design-editor/:id" element={<UserEditDesign />} />
+                <Route path="/card-preview" element={<CardPreview />} />
+                <Route path="/cart" element={<AddToCart/>} />
+
+                {role === 'admin' && (
+                  <>
+                    <Route path="/admin-portal" element={<Dashboard />} />
+                    <Route path="/admin-portal/all-products" element={<AllProducts />} />
+                    <Route path="/admin-portal/add-product" element={<AddProduct />} />
+                    <Route path="/admin-portal/edit/:id" element={<EditProduct />} />
+                  </>
+                )}
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </LayoutManager>
+          )}
+        </CanvasProvider>
+      </CartProvider>
     </Router>
   )
 }

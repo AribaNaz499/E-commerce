@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from "../../supabase/client";
 import { CanvasContext } from "../../context/CanvasContext";
 import CanvasArea from "../../components/editor/CanvasArea";
@@ -11,9 +11,9 @@ import {
 } from 'lucide-react';
 
 const UserEditDesign = () => {
-
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const context = useContext(CanvasContext);
 
   if (!context)
@@ -23,10 +23,9 @@ const UserEditDesign = () => {
     elements, setElements,
     setCanvasBg, canvasBg,
     orientation, setOrientation,
-    activeTool, setActiveTool,
+    setActiveTool,
     isToolPanelOpen, setIsToolPanelOpen,
-    addText, addSticker, handleImageUpload,
-    imageInputRef, setSelectedId,
+    setSelectedId,
     selectedId
   } = context;
 
@@ -36,11 +35,6 @@ const UserEditDesign = () => {
   const [scale, setScale] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
 
-  const canvasDimensions = {
-    portrait: { width: 400, height: 550 },
-    landscape: { width: 700, height: 450 }
-  };
-
   const [slidesData, setSlidesData] = useState({
     1: { elements: [], bg: "#ffffff" },
     2: { elements: [], bg: "#ffffff" },
@@ -48,165 +42,98 @@ const UserEditDesign = () => {
     4: { elements: [], bg: "#ffffff" }
   });
 
-  const isLockedSlide = currentSlide === 1; 
+  const isLockedSlide = currentSlide === 1 || currentSlide === 4;
 
+  // --- HELPER: LOGO LOGIC ---
+  const addFixedLogoToSlide4 = (slides, currentOrientation) => {
+    const canvasWidth = currentOrientation === "landscape" ? 700 : 400;
+    const canvasHeight = currentOrientation === "landscape" ? 450 : 550;
+    const logoSize = currentOrientation === "landscape" ? 180 : 150;
 
-  useEffect(() => {
+    const hasLogo = slides[4]?.elements?.some(el => el.isLogo === true);
+    if (!hasLogo) {
+      const logo = {
+        id: `logo-${Date.now()}`,
+        type: "image",
+        src: LogoImg,
+        x: (canvasWidth / 2) - (logoSize / 2),
+        y: (canvasHeight / 2) - (logoSize / 2),
+        width: logoSize,
+        height: logoSize,
+        isLogo: true,
+        isFixed: true,
+        draggable: false,
+        listening: false
+      };
+      slides[4] = {
+        ...slides[4],
+        elements: [...(slides[4]?.elements || []), logo]
+      };
+    }
+    return slides;
+  };
 
-    const handleResize = () => {
-
-      const width = window.innerWidth;
-
-      const sidebarWidth = width >= 768 ? 80 : 0;
-      const panelWidth = (isToolPanelOpen && width >= 768) ? 320 : 0;
-
-      const availableWidth = width - sidebarWidth - panelWidth - 60;
-
-      const baseWidth = orientation === "landscape" ? 700 : 400;
-
-      const newScale = Math.min(availableWidth / baseWidth, 0.9);
-
-      setScale(newScale);
-
-    };
-
-    handleResize();
-
-    window.addEventListener("resize", handleResize);
-
-    return () => window.removeEventListener("resize", handleResize);
-
-  }, [orientation, isToolPanelOpen]);
-
-  
-  const saveSlideToDatabase = async (slideNum, slideElements, slideBg) => {
+  // Add this function to load single slide
+  const loadSlideFromDatabase = async (slideNum) => {
     try {
       const designId = parseInt(id);
-      
-      const { data: existingSlide, error: checkError } = await supabase
+      const { data, error } = await supabase
+        .from("design_slides")
+        .select("elements, bg_color")
+        .eq("design_id", designId)
+        .eq("slide_number", slideNum)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        return {
+          elements: data.elements || [],
+          bg: data.bg_color || "#ffffff"
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error(`❌ Load Slide ${slideNum} Error:`, error);
+      return null;
+    }
+  };
+
+  // --- DB: SAVE SINGLE SLIDE ---
+  const saveSlideToDatabase = async (slideNum, slideElements, slideBg) => {
+    if (fetching || !slideElements) return;
+    try {
+      const designId = parseInt(id);
+
+      const { data: existingSlide } = await supabase
         .from("design_slides")
         .select("id")
         .eq("design_id", designId)
         .eq("slide_number", slideNum)
         .maybeSingle();
 
-      if (checkError) throw checkError;
-
       const slideData = {
         design_id: designId,
         slide_number: slideNum,
-        elements: slideElements || [],
-        bg_color: slideBg || "#ffffff",
+        elements: slideElements,
+        bg_color: slideBg,
         updated_at: new Date()
       };
 
       if (existingSlide) {
-        const { error } = await supabase
-          .from("design_slides")
-          .update({
-            elements: slideElements || [],
-            bg_color: slideBg || "#ffffff",
-            updated_at: new Date()
-          })
-          .eq("design_id", designId)
-          .eq("slide_number", slideNum);
-
-        if (error) throw error;
-        console.log(`✅ Updated slide ${slideNum} in design_slides`);
+        await supabase.from("design_slides").update(slideData).eq("id", existingSlide.id);
       } else {
-        const { error } = await supabase
-          .from("design_slides")
-          .insert([slideData]);
-
-        if (error) throw error;
-        console.log(`✅ Inserted slide ${slideNum} into design_slides`);
+        await supabase.from("design_slides").insert([slideData]);
       }
-    } catch (error) {
-      console.error(`❌ Error saving slide ${slideNum}:`, error);
+    } catch (e) {
+      console.error(`❌ Save Error Slide ${slideNum}:`, e);
     }
   };
 
-  const loadSlidesFromDatabase = async () => {
-    try {
-      const designId = parseInt(id);
-      
-      const { data: slides, error } = await supabase
-        .from("design_slides")
-        .select("*")
-        .eq("design_id", designId);
-
-      if (error) throw error;
-
-      const loadedSlides = {
-        1: { elements: [], bg: "#ffffff" },
-        2: { elements: [], bg: "#ffffff" },
-        3: { elements: [], bg: "#ffffff" },
-        4: { elements: [], bg: "#ffffff" }
-      };
-
-      slides?.forEach(slide => {
-        loadedSlides[slide.slide_number] = {
-          elements: slide.elements || [],
-          bg: slide.bg_color || "#ffffff"
-        };
-      });
-
-      console.log("📦 Loaded slides from design_slides:", loadedSlides);
-      return loadedSlides;
-    } catch (error) {
-      console.error("❌ Error loading slides:", error);
-      return null;
-    }
-  };
-
-  const addFixedLogoToSlide4 = (slides) => {
-    const currentOrientation = orientation || "portrait";
-    
-    const canvasWidth = currentOrientation === "landscape" ? 700 : 400;
-    const canvasHeight = currentOrientation === "landscape" ? 450 : 550;
-    
-    const logoWidth = currentOrientation === "landscape" ? 180 : 150;
-    const logoHeight = currentOrientation === "landscape" ? 180 : 150;
-    
-    const hasLogo = slides[4]?.elements?.some(el => el.isLogo === true);
-    
-    if (!hasLogo) {
-      
-      const logo = {
-        id: `logo-${Date.now()}`,
-        type: "image",
-        src: LogoImg, 
-        x: (canvasWidth / 2) - (logoWidth / 2), 
-        y: (canvasHeight / 2) - (logoHeight / 2), 
-        width: logoWidth,
-        height: logoHeight,
-        isLogo: true,
-        isFixed: true,
-        draggable: false,
-        listening: false,
-        perfectDrawEnabled: false
-      };
-      
-      slides[4] = {
-        ...slides[4],
-        elements: [...(slides[4]?.elements || []), logo]
-      };
-      
-      console.log(`✅ Fixed logo added to Slide 4 (${currentOrientation} mode)`);
-      console.log(`📐 Position: x=${logo.x}, y=${logo.y}, size=${logoWidth}x${logoHeight}`);
-    }
-    
-    return slides;
-  };
-
-  
-
+  // INITIAL LOAD useEffect mein yeh change karein
   useEffect(() => {
-
     const loadDesign = async () => {
-
       if (!id) return;
-
       setFetching(true);
 
       try {
@@ -218,375 +145,220 @@ const UserEditDesign = () => {
 
         if (productError) throw productError;
 
-        if (product) {
-          console.log("📦 PRODUCT DATA:", product);
-          
-          let loadedSlides = await loadSlidesFromDatabase();
-          
-          if (!loadedSlides || Object.values(loadedSlides).every(s => s.elements.length === 0)) {
-            console.log("📦 No slides in design_slides, checking products.content");
-            
-            const dbContent = product.content || {};
-            
-            loadedSlides = {
-              1: { elements: dbContent.elements || [], bg: dbContent.canvasBg || "#ffffff" },
-              2: { elements: [], bg: "#ffffff" },
-              3: { elements: [], bg: "#ffffff" },
-              4: { elements: [], bg: "#ffffff" }
-            };
-
-            if (dbContent.allSlides) {
-              loadedSlides = {
-                ...loadedSlides,
-                ...dbContent.allSlides
-              };
-            }
-          }
-
-          let detectedOrientation = product.orientation || "";
-
-          if (!detectedOrientation) {
-            const hasWideElement = loadedSlides[1]?.elements?.some(el => 
-              el.x > 500 || (el.width && el.width > 500)
-            );
-            detectedOrientation = hasWideElement ? "landscape" : "portrait";
-          }
-
-          const finalOrientation = detectedOrientation === "landscape" ? "landscape" : "portrait";
-          
-          setOrientation(finalOrientation);
-
-          loadedSlides = addFixedLogoToSlide4(loadedSlides);
-
-          console.log("📦 SLIDE 1 ELEMENTS:", loadedSlides[1]?.elements?.length || 0);
-          console.log("📦 SLIDE 2 ELEMENTS:", loadedSlides[2]?.elements?.length || 0);
-          console.log("📦 SLIDE 3 ELEMENTS:", loadedSlides[3]?.elements?.length || 0);
-          console.log("📦 SLIDE 4 ELEMENTS:", loadedSlides[4]?.elements?.length || 0);
-
-          [1,2,3,4].forEach(num => {
-            if (!loadedSlides[num]) {
-              loadedSlides[num] = { elements: [], bg: "#ffffff" };
-            }
-            if (!loadedSlides[num].elements) {
-              loadedSlides[num].elements = [];
-            }
-          });
-
-          console.log("✅ FINAL ORIENTATION:", finalOrientation);
-          console.log("✅ FINAL SLIDES DATA:", loadedSlides);
-          
-          setDesignName(product.name || "Untitled Design");
-          setSlidesData(loadedSlides);
-          
-          setElements([...loadedSlides[1].elements]);
-          setCanvasBg(loadedSlides[1].bg || "#ffffff");
+        let detectedOrientation = product.orientation || "portrait";
+        if (!product.orientation && product.content?.elements) {
+          const hasWide = product.content.elements.some(el => el.x > 500 || el.width > 500);
+          detectedOrientation = hasWide ? "landscape" : "portrait";
         }
+        setOrientation(detectedOrientation);
+
+        // Check if this is a fresh edit (coming from category/all designs page)
+        const isFreshEdit = !location.state?.fromPreview;
+
+        let finalSlides = {
+          // Slide 1 always from product content (admin published data)
+          1: { elements: product.content?.elements || [], bg: product.content?.canvasBg || "#ffffff" },
+          // Slide 2 & 3: Empty for fresh edit, otherwise from DB
+          2: isFreshEdit ? { elements: [], bg: "#ffffff" } :
+            (await loadSlideFromDatabase(2) || { elements: [], bg: "#ffffff" }),
+          3: isFreshEdit ? { elements: [], bg: "#ffffff" } :
+            (await loadSlideFromDatabase(3) || { elements: [], bg: "#ffffff" }),
+          4: (await loadSlideFromDatabase(4)) || { elements: [], bg: "#ffffff" }
+        };
+
+        // Add logo to slide 4
+        finalSlides = addFixedLogoToSlide4(finalSlides, detectedOrientation);
+
+        setDesignName(product.name || "Untitled");
+        setSlidesData(finalSlides);
+
+        // Initial setup for Slide 1
+        setElements([...finalSlides[1].elements]);
+        setCanvasBg(finalSlides[1].bg);
+        setCurrentSlide(1);
 
       } catch (err) {
-        console.error("Load error:", err);
+        console.error("❌ Load error:", err);
       } finally {
         setFetching(false);
       }
-
     };
 
     loadDesign();
+  }, [id, location.state?.fromPreview]); // Add location.state as dependency
 
-  }, [id]);
-
-
+  // --- SCALE LOGIC ---
   useEffect(() => {
-    if (!fetching && slidesData[4]?.elements) {
-      const canvasWidth = orientation === "landscape" ? 700 : 400;
-      const canvasHeight = orientation === "landscape" ? 450 : 550;
-      const logoWidth = orientation === "landscape" ? 180 : 150;
-      const logoHeight = orientation === "landscape" ? 180 : 150;
-      
-      
-      setSlidesData(prev => {
-        const updatedElements = prev[4].elements.map(el => {
-          if (el.isLogo) {
-            return {
-              ...el,
-              x: canvasWidth / 2 - logoWidth / 2,
-              y: canvasHeight / 2 - logoHeight / 2,
-              width: logoWidth,
-              height: logoHeight
-            };
-          }
-          return el;
-        });
-        
-        return {
-          ...prev,
-          4: {
-            ...prev[4],
-            elements: updatedElements
-          }
-        };
-      });
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const sidebarWidth = width >= 768 ? 80 : 0;
+      const panelWidth = (isToolPanelOpen && width >= 768) ? 320 : 0;
+      const availableWidth = width - sidebarWidth - panelWidth - 60;
+      const baseWidth = orientation === "landscape" ? 700 : 400;
+      setScale(Math.min(availableWidth / baseWidth, 0.9));
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [orientation, isToolPanelOpen, fetching]);
 
-      if (currentSlide === 4) {
-        setElements(prev => prev.map(el => {
-          if (el.isLogo) {
-            return {
-              ...el,
-              x: canvasWidth / 2 - logoWidth / 2,
-              y: canvasHeight / 2 - logoHeight / 2,
-              width: logoWidth,
-              height: logoHeight
-            };
-          }
-          return el;
-        }));
-      }
-    }
-  }, [orientation, fetching, currentSlide]);
-
-  const saveCurrentSlideData = () => {
-    setSlidesData(prev => {
-      const updated = {
-        ...prev,
-        [currentSlide]: { 
-          elements: elements ? [...elements] : [], 
-          bg: canvasBg 
-        }
-      };
-      console.log(`💾 Saved slide ${currentSlide} to memory:`, {
-        elementsCount: updated[currentSlide].elements.length
-      });
-      return updated;
-    });
-  };
-
-  
+  // --- AUTO-SAVE EFFECT ---
   useEffect(() => {
     if (!fetching && !isLockedSlide && elements) {
-      const timer = setTimeout(async () => {
-        saveCurrentSlideData();
-        await saveSlideToDatabase(currentSlide, elements, canvasBg);
+      const timer = setTimeout(() => {
+        // Update local state and DB
+        setSlidesData(prev => ({
+          ...prev,
+          [currentSlide]: { elements: [...elements], bg: canvasBg }
+        }));
+        saveSlideToDatabase(currentSlide, elements, canvasBg);
       }, 1000);
-      
       return () => clearTimeout(timer);
     }
-  }, [elements, canvasBg, currentSlide, fetching, isLockedSlide]);
+  }, [elements, canvasBg, fetching, currentSlide]);
 
-  useEffect(() => {
-    if (isLockedSlide && selectedId) {
-      setSelectedId(null);
-    }
-  }, [isLockedSlide, selectedId]);
-
-  
-
+  // --- SLIDE CHANGE ---
   const handleSlideChange = async (nextSlide) => {
-    if (nextSlide === currentSlide) return;
+    if (nextSlide === currentSlide || fetching) return;
 
-    console.log("➡️ Slide change from", currentSlide, "to", nextSlide);
-
+    // 1. Save current state before switching
     await saveSlideToDatabase(currentSlide, elements, canvasBg);
-    saveCurrentSlideData();
 
-    let nextData = slidesData[nextSlide] || { elements: [], bg: "#ffffff" };
+    // 2. Prepare next slide data
+    const nextData = slidesData[nextSlide] || { elements: [], bg: "#ffffff" };
 
-    console.log(`📂 Loading slide ${nextSlide} with ${nextData.elements?.length || 0} elements`);
+    // 3. Process interactivity based on slide number
+    const processed = (nextData.elements || []).map(el => ({
+      ...el,
+      draggable: !(nextSlide === 1 || nextSlide === 4),
+      isFixed: (nextSlide === 1 || nextSlide === 4),
+      listening: !(nextSlide === 1 || nextSlide === 4)
+    }));
 
-  
-    const processedElements = (nextData.elements || []).map(el => {
-      if (nextSlide === 4 || nextSlide === 1) {
-        return {
-          ...el,
-          draggable: false,
-          isFixed: true,
-          listening: false,
-          hitStrokeWidth: 0
-        };
-      } else {
-        return {
-          ...el,
-          draggable: true,
-          isFixed: false,
-          listening: true,
-          hitStrokeWidth: 2
-        };
-      }
-    });
-
-    setElements(processedElements);
-    setCanvasBg(nextData.bg || "#ffffff");
+    // 4. Set state
+    setElements(processed);
+    setCanvasBg(nextData.bg);
     setCurrentSlide(nextSlide);
     setSelectedId(null);
     setIsToolPanelOpen(false);
   };
 
-
-
   const handlePreview = async () => {
+    setIsSaving(true);
     await saveSlideToDatabase(currentSlide, elements, canvasBg);
-    saveCurrentSlideData();
 
-    const finalSlidesData = {
+    // Sync local state before navigating
+    const finalSlides = {
       ...slidesData,
       [currentSlide]: { elements: [...elements], bg: canvasBg }
     };
 
     navigate("/card-preview", {
-      state: {
-        allSlides: finalSlidesData,
-        orientation,
-        designName
-      }
+      state: { allSlides: finalSlides, orientation, designName, id }
     });
   };
 
-  
   const handleBack = async () => {
     setIsSaving(true);
-    
     await saveSlideToDatabase(currentSlide, elements, canvasBg);
-    
-    for (let slideNum = 1; slideNum <= 4; slideNum++) {
-      if (slideNum !== currentSlide && slidesData[slideNum]?.elements?.length > 0) {
-        await saveSlideToDatabase(slideNum, slidesData[slideNum].elements, slidesData[slideNum].bg);
-      }
-    }
-    
-    setIsSaving(false);
     navigate(-1);
   };
 
-  if (fetching)
-    return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  if (fetching) return <div className="h-screen flex items-center justify-center">Loading Design...</div>;
 
-  const currentSize = canvasDimensions[orientation] || canvasDimensions.portrait;
-
-  return (
-    <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
-   
-      <nav className="h-16 bg-white border-b px-4 flex items-center justify-between">
-        <button 
-          onClick={handleBack} 
-          className="text-slate-500 hover:text-blue-600 flex items-center gap-1"
-          disabled={isSaving}
-        >
+return (
+    <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden fixed inset-0 select-none">
+      
+      {/* 1. Navbar: Stable & High Z-Index */}
+      <nav className="h-14 sm:h-16 bg-white border-b px-2 sm:px-4 flex items-center justify-between z-[100] shrink-0 shadow-sm">
+        <button onClick={handleBack} className="text-slate-500 hover:text-blue-600 p-2">
           <ArrowLeft size={20} />
-          {isSaving ? "Saving..." : "Back"}
         </button>
 
-        <div className="flex bg-slate-100 p-1 rounded-xl">
-          {[1,2,3,4].map(num => (
+        <div className="flex bg-slate-100 p-0 rounded-xl shadow-inner">
+          {[1, 2, 3, 4].map(num => (
             <button
               key={num}
               onClick={() => handleSlideChange(num)}
-              className={`w-12 h-12 rounded-lg text-sm font-black relative ${
-                currentSlide === num
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-500"
-              }`}
+              className={`relative transition-all rounded-lg flex items-center justify-center font-black mx-0.5
+                ${currentSlide === num ? "bg-blue-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-200"}
+                ${orientation === 'landscape' ? "w-10 h-7 sm:w-14 sm:h-10" : "w-8 h-10 sm:w-12 sm:h-14"}
+              `}
             >
-              {num === 1 ? "F" : num === 4 ? "B" : num}
+              <span className="text-[10px] sm:text-xs">{num === 1 ? "F" : num === 4 ? "B" : num}</span>
               {(num === 1 || num === 4) && (
-                <Lock size={12} className="absolute -top-1 -right-1 text-slate-400" />
+                <Lock size={10} className={`absolute top-0 right-0 m-0.5 ${currentSlide === num ? "text-white/30" : "text-slate-400"}`} />
               )}
             </button>
           ))}
         </div>
 
-        <button
-          onClick={handlePreview}
-          className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-xs uppercase"
-          disabled={isSaving}
-        >
+        <button onClick={handlePreview} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] sm:text-xs uppercase">
           Preview
         </button>
       </nav>
 
-    
-      <div className="flex-1 flex overflow-hidden">
-      
-        <aside className="w-20 bg-white border-r flex flex-col items-center py-8 gap-8">
-          <SidebarBtn 
-            icon={<ImageIcon />} 
-            onClick={() => { 
-              if (!isLockedSlide && currentSlide !== 4) {
-                setActiveTool("image"); 
-                setIsToolPanelOpen(true);
-              }
-            }} 
-            disabled={isLockedSlide || currentSlide === 4 || isSaving}
-          />
-          <SidebarBtn 
-            icon={<Type />} 
-            onClick={() => { 
-              if (!isLockedSlide && currentSlide !== 4) {
-                setActiveTool("text"); 
-                setIsToolPanelOpen(true);
-              }
-            }} 
-            disabled={isLockedSlide || currentSlide === 4 || isSaving}
-          />
-          <SidebarBtn 
-            icon={<Smile />} 
-            onClick={() => { 
-              if (!isLockedSlide && currentSlide !== 4) {
-                setActiveTool("sticker"); 
-                setIsToolPanelOpen(true);
-              }
-            }} 
-            disabled={isLockedSlide || currentSlide === 4 || isSaving}
-          />
-          <SidebarBtn 
-            icon={<Layout />} 
-            onClick={() => { 
-              if (!isLockedSlide && currentSlide !== 4) {
-                setActiveTool("layout"); 
-                setIsToolPanelOpen(true);
-              }
-            }} 
-            disabled={isLockedSlide || currentSlide === 4 || isSaving}
-          />
-
-          {(isLockedSlide || currentSlide === 4) && (
-            <div className="text-xs text-slate-400 text-center px-2 mt-4">
-              <Lock size={16} className="mx-auto mb-1" />
-              <span>{currentSlide === 4 ? "Fixed Logo" : "Slide Locked"}</span>
-            </div>
-          )}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        
+        {/* 2. Sidebar: Desktop par Left, Mobile par Footer */}
+        {/* Hidden class yahan 'white space' ko mobile par khatam karegi */}
+        <aside className="fixed bottom-0 left-0 right-0 md:relative md:w-20 bg-white border-t md:border-t-0 md:border-r flex md:flex-col flex-row items-center justify-around md:justify-start py-2 md:py-8 z-[110] h-16 md:h-full">
+          <SidebarBtn icon={<ImageIcon />} onClick={() => { setActiveTool("image"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
+          <SidebarBtn icon={<Type />} onClick={() => { setActiveTool("text"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
+          <SidebarBtn icon={<Smile />} onClick={() => { setActiveTool("sticker"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
+          <SidebarBtn icon={<Layout />} onClick={() => { setActiveTool("layout"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
         </aside>
 
-        
-        <main className="flex-1 flex items-center justify-center bg-[#F1F5F9] relative">
-          <div style={{ transform:`scale(${scale})` }}>
-            <CanvasArea
-              key={`canvas-${orientation}-${currentSlide}`}
-              elements={elements}
-              orientation={orientation}
-            />
+        {/* 3. Main Editor Area: Isko 'flex-1' rakha hai taake ye baki jagah cover kare */}
+        <main className="flex-1 flex items-center justify-center bg-[#F1F5F9] relative overflow-hidden p-4 pb-24 md:pb-4">
+          <div 
+            style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+            className="shadow-2xl bg-white transition-all duration-300 ring-1 ring-black/5"
+          >
+            <CanvasArea key={`canvas-${currentSlide}`} elements={elements} orientation={orientation} isLocked={isLockedSlide} />
           </div>
         </main>
+        
 
+        {/* 4. Tool Panel: Fixed for Desktop & Mobile */}
         {isToolPanelOpen && !isLockedSlide && currentSlide !== 4 && (
-          <ToolPanel />
+          <div className="fixed mr-2 inset-0  md:static  z-[1000] flex flex-col justify-end md:w-80 md:border-l md:bg-white">
+            {/* Mobile Backdrop */}
+            <div className="absolute inset-0 bg-black/40 md:hidden" onClick={() => setIsToolPanelOpen(false)} />
+            
+            <div className="relative w-90 h-[70vh] md:h-full bg-white rounded-t-[2.5rem] md:rounded-none shadow-2xl md:shadow-none flex flex-col overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-right duration-300">
+                {/* Mobile Handle */}
+                <div className="md:hidden   flex justify-center py-4 shrink-0">
+                  <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                </div>
+                
+                {/* Tool Content Area */}
+                <div className="flex-1 overflow-y-auto px-4 pb-20 md:pb-4  custom-scrollbar" >
+                   <ToolPanel />
+                </div>
+            </div>
+          </div>
         )}
       </div>
 
-    
+      {/* 5. Bottom Settings (Selected Item Controls) */}
       {selectedId && !isLockedSlide && currentSlide !== 4 && (
-        <LayerPanel />
+        <div className="fixed inset-x-0 bottom-[64px] md:bottom-6 z-[120] flex justify-center pointer-events-none px-4">
+           {/* Isko fixed height aur centered rakha hai taake sidebar ke upar na aaye */}
+           <div className="pointer-events-auto bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/20">
+              <LayerPanel />
+           </div>
+        </div>
       )}
     </div>
   );
 };
 
 const SidebarBtn = ({ icon, onClick, disabled }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`p-3 rounded-xl transition-all ${
-      disabled
-        ? "opacity-30 cursor-not-allowed"
-        : "text-slate-400 hover:bg-slate-100 hover:text-blue-600"
-    }`}
+  <button 
+    onClick={onClick} 
+    disabled={disabled} 
+    className={`p-3 sm:p-4 rounded-xl transition-all active:scale-95 ${disabled ? "opacity-20" : "text-slate-400 hover:text-blue-600"}`}
   >
     {React.cloneElement(icon, { size: 24 })}
   </button>

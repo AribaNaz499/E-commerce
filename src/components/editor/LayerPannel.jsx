@@ -121,10 +121,11 @@ const LayerPannel = () => {
   };
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-slate-200 px-4 py-3 rounded-2xl flex items-center gap-4 z-[200] animate-in fade-in zoom-in duration-200">
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-slate-200 px-4 py-3 rounded-2xl flex items-center gap-4 z-[200] animate-in fade-in zoom-in duration-200
+    ">
       
       
-      <div className="flex items-center gap-2 border-r pr-4">
+      <div className="flex items-center gap-2 border-r pr-4 ">
         <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-full capitalize flex items-center gap-1">
           {elementIcon} {elementType}
         </span>

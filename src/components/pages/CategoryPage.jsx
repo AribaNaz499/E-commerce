@@ -4,6 +4,7 @@ import { supabase } from "../../supabase/client";
 import UserNavbar from './UserNavbar';
 import UserFooter from './UserFooter';
 import { Share, GitCompare, Heart } from 'lucide-react';
+import { useCart } from '../../context/CartContext'; 
 
 const CategoryPage = () => {
     const { categoryName } = useParams(); 
@@ -11,8 +12,12 @@ const CategoryPage = () => {
     const [designs, setDesigns] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const { addToCart } = useCart();
+
     const handleEditPage = (id) => {
-        navigate(`/design-editor/${id}`);
+        navigate(`/design-editor/${id}`, { 
+            state: { fromPreview: false } 
+        });
     };
 
     useEffect(() => {
@@ -71,19 +76,22 @@ const CategoryPage = () => {
                                     />
                                     
                                     <div className="hidden md:flex absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <button className="bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-100 active:scale-95">
+                                        <button 
+                                            onClick={() => addToCart(product)}
+                                            className="bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-50 active:scale-95"
+                                        >
                                             Add to cart
                                         </button>
                                         <button 
                                             onClick={() => handleEditPage(product.id)}
-                                            className='bg-white text-yellow-600 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-100 active:scale-95'
+                                            className='bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-50 active:scale-95'
                                         >
                                             Edit
                                         </button>
                                         <div className="flex items-center gap-4 text-white font-semibold text-sm">
-                                            <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><Share size={16} /> Share</button>
-                                            <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><GitCompare size={16} /> Compare</button>
-                                            <button className="flex items-center gap-1 hover:text-yellow-500 transition-colors"><Heart size={16} /> Like</button>
+                                            <button className="flex items-center gap-1 hover:text-rose-400 transition-colors"><Share size={16} /> Share</button>
+                                            <button className="flex items-center gap-1 hover:text-rose-400 transition-colors"><GitCompare size={16} /> Compare</button>
+                                            <button className="flex items-center gap-1 hover:text-rose-400 transition-colors"><Heart size={16} /> Like</button>
                                         </div>
                                     </div>
                                 </div>
@@ -103,8 +111,12 @@ const CategoryPage = () => {
                                         </button>
                                     </div>
 
+                                
                                     <div className="mt-4 flex flex-col gap-2 md:hidden">
-                                        <button className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-xl active:scale-95">
+                                        <button 
+                                            onClick={() => addToCart(product)}
+                                            className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-xl active:scale-95"
+                                        >
                                             Add to Cart
                                         </button>
                                         <button 
@@ -113,11 +125,6 @@ const CategoryPage = () => {
                                         >
                                             Edit Design
                                         </button>
-                                        
-                                        <div className="flex justify-between mt-1 px-1">
-                                            <button className="flex items-center gap-1 text-xs text-gray-500"><Share size={14} /> Share</button>
-                                            <button className="flex items-center gap-1 text-xs text-gray-500"><GitCompare size={14} /> Compare</button>
-                                        </div>
                                     </div>
                                 </div>
                             </div>

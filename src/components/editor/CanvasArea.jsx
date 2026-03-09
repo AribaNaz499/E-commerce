@@ -5,8 +5,9 @@ import URLImage from "../../canvas/URLImage";
 import EditableText from "../../canvas/EditableText";
 import CanvasVideo from "../../canvas/CanvasVideo";
 import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer";
+import { Lock } from 'lucide-react'; // ✅ Import Lock icon
 
-const CanvasArea = ({ elements: propElements, orientation: propOrientation }) => {
+const CanvasArea = ({ elements: propElements, orientation: propOrientation , isLocked }) => {
   const context = useContext(CanvasContext);
   if (!context) return null;
 
@@ -53,6 +54,8 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
 
 
   const handleDragEnd = (e, id) => {
+    // Agar locked hai to drag na hone dein
+    if (isLocked) return;
     handleElementUpdate(id, {
       x: e.target.x(),
       y: e.target.y(),
@@ -60,6 +63,9 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
   };
 
   const handleTransformEnd = (e, id) => {
+    // Agar locked hai to transform na hone dein
+    if (isLocked) return;
+    
     const node = e.target;
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
@@ -77,6 +83,12 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
   };
 
   const handleStageMouseDown = (e) => {
+    // Agar locked hai to select na hone dein
+    if (isLocked) {
+      setSelectedId(null);
+      return;
+    }
+    
     if (e.target === e.target.getStage()) {
       setSelectedId(null);
     }
@@ -84,7 +96,7 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
 
   return (
     <div
-      className="flex items-center justify-center bg-white shadow-inner transition-all duration-300"
+      className="flex items-center justify-center bg-white shadow-inner transition-all duration-300 relative  ${isLocked ? 'cursor-not-allowed' : ''}" // ✅ relative class add ki
       style={{ width: currentSize.width, height: currentSize.height }}
     >
       <Stage
@@ -94,6 +106,8 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
         key={`stage-${orientation}`} 
         onMouseDown={handleStageMouseDown}
         onTouchStart={handleStageMouseDown}
+          style={{ cursor: isLocked ? 'not-allowed' : 'default' }} // ✅ Stage par bhi cursor
+
       >
         <Layer ref={layerRef}>
           <Rect
@@ -107,14 +121,30 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
           {activeElements.map((el) => {
             if (!el) return null;
 
+            // ✅ Har element mein locked property add karein
+            const elementWithLock = {
+              ...el,
+              isLocked: isLocked || el.isFixed || el.isLogo // Global lock ya element-specific lock
+            };
+
             const commonProps = {
               id: el.id,
-              el: el,
-              isSelected: selectedId === el.id,
-              onSelect: () => setSelectedId(el.id),
+              el: elementWithLock, // ✅ elementWithLock pass karein
+              isSelected: selectedId === el.id && !isLocked, // Locked hai to select na ho
+              onSelect: () => {
+                // Locked hai to select na hone dein
+                if (!isLocked) {
+                  setSelectedId(el.id);
+                }
+              },
               onDragEnd: (e) => handleDragEnd(e, el.id),
               onTransformEnd: (e) => handleTransformEnd(e, el.id),
-              onChange: (attr) => handleElementUpdate(el.id, attr)
+              onChange: (attr) => {
+                // Locked hai to change na hone dein
+                if (!isLocked) {
+                  handleElementUpdate(el.id, attr);
+                }
+              }
             };
 
             if (el.type === "audio" || String(el.id).includes("audio")) {
@@ -124,7 +154,7 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
                   {...commonProps}
                   audioData={el}
                   isPlaying={isPlaying}
-                  onTogglePlay={() => setIsPlaying(!isPlaying)}
+                  onTogglePlay={() => !isLocked && setIsPlaying(!isPlaying)} // Locked hai to play na ho
                 />
               );
             }
@@ -144,7 +174,8 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
             return null;
           })}
 
-          {selectedId && (
+          {/* ✅ Transformer sirf tab show ho jab locked na ho */}
+          {selectedId && !isLocked && (
             <Transformer
               ref={trRef}
               keepRatio={true}
@@ -156,6 +187,13 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation }) =>
           )}
         </Layer>
       </Stage>
+      
+      {/* Optional: Locked overlay message - ab yeh kaam karega */}
+      {isLocked && (
+        <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 pointer-events-none">
+          <Lock size={12} /> Slide Locked
+        </div>
+      )}
     </div>
   );
 };
