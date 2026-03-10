@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../config/supabaseClient";
 import UserNavbar from './UserNavbar';
 import UserFooter from './UserFooter';
 import { Share, GitCompare, Heart } from 'lucide-react';

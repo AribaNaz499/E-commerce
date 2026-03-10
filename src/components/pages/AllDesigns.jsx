@@ -3,7 +3,7 @@ import { Share, GitCompare, Heart, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UserNavbar from '../../components/pages/UserNavbar';
 import UserFooter from '../../components/pages/UserFooter';
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../config/supabaseClient";
 import { useCart } from '../../context/CartContext'; 
 
 const AllDesigns = () => {

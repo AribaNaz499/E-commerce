@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../config/supabaseClient";
 import { CanvasContext } from "../../context/CanvasContext";
 import CanvasArea from "../../components/editor/CanvasArea";
 import ToolPanel from "../../components/editor/ToolPanel";
@@ -44,7 +44,6 @@ const UserEditDesign = () => {
 
   const isLockedSlide = currentSlide === 1 || currentSlide === 4;
 
-  // --- HELPER: LOGO LOGIC ---
   const addFixedLogoToSlide4 = (slides, currentOrientation) => {
     const canvasWidth = currentOrientation === "landscape" ? 700 : 400;
     const canvasHeight = currentOrientation === "landscape" ? 450 : 550;
@@ -73,7 +72,6 @@ const UserEditDesign = () => {
     return slides;
   };
 
-  // Add this function to load single slide
   const loadSlideFromDatabase = async (slideNum) => {
     try {
       const designId = parseInt(id);
@@ -99,7 +97,6 @@ const UserEditDesign = () => {
     }
   };
 
-  // --- DB: SAVE SINGLE SLIDE ---
   const saveSlideToDatabase = async (slideNum, slideElements, slideBg) => {
     if (fetching || !slideElements) return;
     try {
@@ -130,7 +127,7 @@ const UserEditDesign = () => {
     }
   };
 
-  // INITIAL LOAD useEffect mein yeh change karein
+  
   useEffect(() => {
     const loadDesign = async () => {
       if (!id) return;
@@ -185,9 +182,8 @@ const UserEditDesign = () => {
     };
 
     loadDesign();
-  }, [id, location.state?.fromPreview]); // Add location.state as dependency
+  }, [id, location.state?.fromPreview]); 
 
-  // --- SCALE LOGIC ---
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
@@ -202,7 +198,6 @@ const UserEditDesign = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [orientation, isToolPanelOpen, fetching]);
 
-  // --- AUTO-SAVE EFFECT ---
   useEffect(() => {
     if (!fetching && !isLockedSlide && elements) {
       const timer = setTimeout(() => {
@@ -217,7 +212,6 @@ const UserEditDesign = () => {
     }
   }, [elements, canvasBg, fetching, currentSlide]);
 
-  // --- SLIDE CHANGE ---
   const handleSlideChange = async (nextSlide) => {
     if (nextSlide === currentSlide || fetching) return;
 
@@ -269,7 +263,7 @@ const UserEditDesign = () => {
 return (
     <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden fixed inset-0 select-none">
       
-      {/* 1. Navbar: Stable & High Z-Index */}
+    
       <nav className="h-14 sm:h-16 bg-white border-b px-2 sm:px-4 flex items-center justify-between z-[100] shrink-0 shadow-sm">
         <button onClick={handleBack} className="text-slate-500 hover:text-blue-600 p-2">
           <ArrowLeft size={20} />
@@ -300,8 +294,7 @@ return (
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         
-        {/* 2. Sidebar: Desktop par Left, Mobile par Footer */}
-        {/* Hidden class yahan 'white space' ko mobile par khatam karegi */}
+        
         <aside className="fixed bottom-0 left-0 right-0 md:relative md:w-20 bg-white border-t md:border-t-0 md:border-r flex md:flex-col flex-row items-center justify-around md:justify-start py-2 md:py-8 z-[110] h-16 md:h-full">
           <SidebarBtn icon={<ImageIcon />} onClick={() => { setActiveTool("image"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
           <SidebarBtn icon={<Type />} onClick={() => { setActiveTool("text"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
@@ -309,7 +302,6 @@ return (
           <SidebarBtn icon={<Layout />} onClick={() => { setActiveTool("layout"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
         </aside>
 
-        {/* 3. Main Editor Area: Isko 'flex-1' rakha hai taake ye baki jagah cover kare */}
         <main className="flex-1 flex items-center justify-center bg-[#F1F5F9] relative overflow-hidden p-4 pb-24 md:pb-4">
           <div 
             style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
@@ -320,19 +312,19 @@ return (
         </main>
         
 
-        {/* 4. Tool Panel: Fixed for Desktop & Mobile */}
+      
         {isToolPanelOpen && !isLockedSlide && currentSlide !== 4 && (
           <div className="fixed mr-2 inset-0  md:static  z-[1000] flex flex-col justify-end md:w-80 md:border-l md:bg-white">
-            {/* Mobile Backdrop */}
+          
             <div className="absolute inset-0 bg-black/40 md:hidden" onClick={() => setIsToolPanelOpen(false)} />
             
             <div className="relative w-90 h-[70vh] md:h-full bg-white rounded-t-[2.5rem] md:rounded-none shadow-2xl md:shadow-none flex flex-col overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-right duration-300">
-                {/* Mobile Handle */}
+                
                 <div className="md:hidden   flex justify-center py-4 shrink-0">
                   <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
                 </div>
                 
-                {/* Tool Content Area */}
+                
                 <div className="flex-1 overflow-y-auto px-4 pb-20 md:pb-4  custom-scrollbar" >
                    <ToolPanel />
                 </div>
@@ -341,10 +333,8 @@ return (
         )}
       </div>
 
-      {/* 5. Bottom Settings (Selected Item Controls) */}
       {selectedId && !isLockedSlide && currentSlide !== 4 && (
         <div className="fixed inset-x-0 bottom-[64px] md:bottom-6 z-[120] flex justify-center pointer-events-none px-4">
-           {/* Isko fixed height aur centered rakha hai taake sidebar ke upar na aaye */}
            <div className="pointer-events-auto bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/20">
               <LayerPanel />
            </div>

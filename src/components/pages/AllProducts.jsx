@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, PenIcon, Trash, Loader2, Search, X } from 'lucide-react';
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../config/supabaseClient";
 import { useNavigate } from 'react-router-dom';
 
 const AllProducts = () => {

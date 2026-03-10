@@ -6,49 +6,41 @@ import URLImage from "../../canvas/URLImage";
 import EditableText from "../../canvas/EditableText";
 import CanvasVideo from "../../canvas/CanvasVideo";
 import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer";
-
+import { useCart } from '../../context/CartContext';
 const CardPreview = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { allSlides, orientation, designName, id } = location.state || {};
 
   const [currentPage, setCurrentPage] = useState(1);
+  const { addToCart } = useCart();
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
 
 const handleCart = () => {
-  const frontSlide = allSlides[1];
+  const frontSlide = allSlides[0] || allSlides[1]; 
   let previewThumb = "";
 
-  if (frontSlide) {
-    const firstImageEl = frontSlide.elements?.find(el => el.type === 'image' || el.src);
+  if (frontSlide && frontSlide.elements) {
+    const firstImageEl = frontSlide.elements.find(el => (el.type === 'image' || el.type === 'qrcode' || el.src) && typeof el.src === 'string');
     previewThumb = firstImageEl ? firstImageEl.src : ""; 
   }
 
   const cartItem = {
-    id: id || Date.now(), 
-    name: designName || "Custom Card",
+    id: id || `design-${Date.now()}`, 
+    name: designName || "Eid Greetings",
     price: 15.00, 
     quantity: 1, 
-    image: previewThumb,
-    orientation: orientation || "portrait"
+    image: previewThumb, 
+    orientation: orientation || "portrait",
+    designData: allSlides 
   };
 
-  const existingCart = JSON.parse(localStorage.getItem('cart')) || [];
-  
-  const existingItemIndex = existingCart.findIndex(item => item.id === cartItem.id);
+  // IMPORTANT: 'false' pass karne se modal nahi khulega
+  addToCart(cartItem, false);
 
-  let updatedCart;
-
-  if (existingItemIndex !== -1) {
-    updatedCart = [...existingCart];
-    updatedCart[existingItemIndex].quantity += 1;
-  } else {
-    updatedCart = [...existingCart, cartItem];
-  }
-
-  localStorage.setItem('cart', JSON.stringify(updatedCart));
+  // Navigate karein checkout page par
   navigate("/cart");
 };
 

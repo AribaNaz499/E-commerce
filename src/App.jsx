@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom'
-import { supabase } from './supabase/client'
+import { supabase } from './config/supabaseClient'
 import { CanvasProvider } from './context/CanvasContext'
-import { CartProvider } from './context/CartContext' // <-- CartProvider Import kiya
+import { CartProvider } from './context/CartContext' 
 
 import Auth from './components/pages/Auth'
 import Dashboard from './components/pages/Dashboard'
@@ -16,6 +16,8 @@ import CategoryPage from './components/pages/CategoryPage'
 import UserEditDesign from './components/pages/UserEditDesign'
 import CardPreview from './components/pages/CardPreview'
 import AddToCart from './components/pages/AddToCart'
+import Contact from './components/pages/Contact'
+import Success from './components/pages/Success' 
 
 const LayoutManager = ({ children, role }) => {
   const location = useLocation();
@@ -86,7 +88,6 @@ const App = () => {
 
   return (
     <Router>
-      {/* 1. CartProvider ko sabse bahar rakha taake Navbar isse use kar sake */}
       <CartProvider> 
         <CanvasProvider>
           {!session ? (
@@ -104,6 +105,8 @@ const App = () => {
                 <Route path="/design-editor/:id" element={<UserEditDesign />} />
                 <Route path="/card-preview" element={<CardPreview />} />
                 <Route path="/cart" element={<AddToCart/>} />
+                <Route path="/contact" element={<Contact/>}/>
+                <Route path="/success" element={<Success />} />
 
                 {role === 'admin' && (
                   <>

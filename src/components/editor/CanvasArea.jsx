@@ -5,7 +5,7 @@ import URLImage from "../../canvas/URLImage";
 import EditableText from "../../canvas/EditableText";
 import CanvasVideo from "../../canvas/CanvasVideo";
 import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer";
-import { Lock } from 'lucide-react'; // ✅ Import Lock icon
+import { Lock } from 'lucide-react'; 
 
 const CanvasArea = ({ elements: propElements, orientation: propOrientation , isLocked }) => {
   const context = useContext(CanvasContext);
@@ -63,7 +63,6 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
   };
 
   const handleTransformEnd = (e, id) => {
-    // Agar locked hai to transform na hone dein
     if (isLocked) return;
     
     const node = e.target;
@@ -83,7 +82,6 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
   };
 
   const handleStageMouseDown = (e) => {
-    // Agar locked hai to select na hone dein
     if (isLocked) {
       setSelectedId(null);
       return;
@@ -106,7 +104,7 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
         key={`stage-${orientation}`} 
         onMouseDown={handleStageMouseDown}
         onTouchStart={handleStageMouseDown}
-          style={{ cursor: isLocked ? 'not-allowed' : 'default' }} // ✅ Stage par bhi cursor
+          style={{ cursor: isLocked ? 'not-allowed' : 'default' }}
 
       >
         <Layer ref={layerRef}>
@@ -121,18 +119,17 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
           {activeElements.map((el) => {
             if (!el) return null;
 
-            // ✅ Har element mein locked property add karein
             const elementWithLock = {
               ...el,
-              isLocked: isLocked || el.isFixed || el.isLogo // Global lock ya element-specific lock
+              isLocked: isLocked || el.isFixed || el.isLogo 
             };
 
             const commonProps = {
               id: el.id,
-              el: elementWithLock, // ✅ elementWithLock pass karein
-              isSelected: selectedId === el.id && !isLocked, // Locked hai to select na ho
+              el: elementWithLock, 
+              isSelected: selectedId === el.id && !isLocked, 
               onSelect: () => {
-                // Locked hai to select na hone dein
+                
                 if (!isLocked) {
                   setSelectedId(el.id);
                 }
@@ -140,7 +137,7 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
               onDragEnd: (e) => handleDragEnd(e, el.id),
               onTransformEnd: (e) => handleTransformEnd(e, el.id),
               onChange: (attr) => {
-                // Locked hai to change na hone dein
+              
                 if (!isLocked) {
                   handleElementUpdate(el.id, attr);
                 }
@@ -154,7 +151,7 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
                   {...commonProps}
                   audioData={el}
                   isPlaying={isPlaying}
-                  onTogglePlay={() => !isLocked && setIsPlaying(!isPlaying)} // Locked hai to play na ho
+                  onTogglePlay={() => !isLocked && setIsPlaying(!isPlaying)} 
                 />
               );
             }
@@ -174,7 +171,6 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
             return null;
           })}
 
-          {/* ✅ Transformer sirf tab show ho jab locked na ho */}
           {selectedId && !isLocked && (
             <Transformer
               ref={trRef}
@@ -188,7 +184,6 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
         </Layer>
       </Stage>
       
-      {/* Optional: Locked overlay message - ab yeh kaam karega */}
       {isLocked && (
         <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 pointer-events-none">
           <Lock size={12} /> Slide Locked

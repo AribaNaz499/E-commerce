@@ -10,14 +10,13 @@ import { useCart } from '../../context/CartContext';
 import { Search, User, Heart, ShoppingCart, Menu, X, Share, GitCompare, ChevronDown } from 'lucide-react';
 import UserNavbar from './UserNavbar';
 import UserFooter from './UserFooter';
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../config/supabaseClient";
 
 const UserHome = () => {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // 1. addToCart function ko context se nikala
     const { addToCart } = useCart();
 
     const fetchTemplates = async () => {

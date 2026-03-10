@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom'; 
 import { LayoutGrid, ShoppingBag, PlusSquare, Menu, X, Layers, LogOut } from 'lucide-react';
-import { supabase } from '../supabase/client'; 
+import { supabase } from '../config/supabaseClient'; 
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);

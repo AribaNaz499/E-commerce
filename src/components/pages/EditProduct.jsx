@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ChevronLeft, Loader2, Monitor, Smartphone, Menu } from 'lucide-react';
 import { CanvasContext } from "../../context/CanvasContext";
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../config/supabaseClient";
 import ToolPanel from "../editor/ToolPanel";
 import CanvasArea from "../editor/CanvasArea";
 import LayerPannel from "../editor/LayerPannel";
@@ -25,6 +25,7 @@ const EditProduct = () => {
 
   const [designName, setDesignName] = useState("");
   const [category, setCategory] = useState("Posters");
+  const [price, setPrice] = useState(""); // Naya Price State
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -42,6 +43,7 @@ const EditProduct = () => {
         if (data) {
           setDesignName(data.name || "Untitled Design");
           setCategory(data.category || "Posters");
+          setPrice(data.price || ""); 
           if (data.content) {
             if (data.content.config?.orientation) setOrientation(data.content.config.orientation);
             setCanvasBg(data.content.canvasBg || "#ffffff");
@@ -95,8 +97,8 @@ const EditProduct = () => {
             config: { orientation, dimensions: publishSize },
           },
           category,
+          price: price, 
           image_url: previewDataURL,
-         
         })
         .eq("id", id);
 
@@ -131,6 +133,17 @@ const EditProduct = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+            <span className="text-gray-400 font-bold text-[10px]">RS</span>
+            <input 
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0"
+              className="w-16 bg-transparent outline-none text-xs font-bold text-green-600"
+            />
+          </div>
+
           <div className="flex bg-gray-100 p-1 rounded-lg border">
             <button onClick={() => setOrientation("portrait")} className={`p-2 rounded ${orientation === "portrait" ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}><Smartphone size={14} /></button>
             <button onClick={() => setOrientation("landscape")} className={`p-2 rounded ${orientation === "landscape" ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}><Monitor size={14} /></button>

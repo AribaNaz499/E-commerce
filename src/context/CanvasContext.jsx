@@ -165,7 +165,6 @@ export const CanvasProvider = ({ children }) => {
   };
 
   
- // CanvasContext.jsx mein addSticker function update karein:
 const addSticker = (stickerUrl) => {
   const img = new Image();
   img.crossOrigin = "Anonymous";
@@ -179,13 +178,11 @@ const addSticker = (stickerUrl) => {
       y: 50,
       width: 150,
       height: 150,
-      // Default crop values provide full image view
       crop: { x: 0, y: 0, width: img.width, height: img.height },
       draggable: true,
       isSticker: true,
     };
     setElements((prev) => [...prev, newSticker]);
-    // Foran select karein taake handlers dikhen
     setSelectedId(id);
   };
   img.src = stickerUrl;
