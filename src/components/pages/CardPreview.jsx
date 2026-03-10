@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; 
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart, Edit3, Lock } from 'lucide-react';
 import { Stage, Layer, Rect } from 'react-konva';
@@ -7,6 +7,7 @@ import EditableText from "../../canvas/EditableText";
 import CanvasVideo from "../../canvas/CanvasVideo";
 import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer";
 import { useCart } from '../../context/CartContext';
+
 const CardPreview = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -17,32 +18,45 @@ const CardPreview = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
+  const stageRef = useRef(null);
 
-const handleCart = () => {
-  const frontSlide = allSlides[0] || allSlides[1]; 
-  let previewThumb = "";
+  const handleCart = async () => {
+    let previewThumb = "";
 
-  if (frontSlide && frontSlide.elements) {
-    const firstImageEl = frontSlide.elements.find(el => (el.type === 'image' || el.type === 'qrcode' || el.src) && typeof el.src === 'string');
-    previewThumb = firstImageEl ? firstImageEl.src : ""; 
-  }
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
 
-  const cartItem = {
-    id: id || `design-${Date.now()}`, 
-    name: designName || "Eid Greetings",
-    price: 15.00, 
-    quantity: 1, 
-    image: previewThumb, 
-    orientation: orientation || "portrait",
-    designData: allSlides 
+    if (stageRef.current) {
+      previewThumb = stageRef.current.toDataURL({ pixelRatio: 2 });
+    } else {
+      previewThumb = allSlides[1]?.image || "";
+      if (!previewThumb && allSlides[1]?.elements) {
+        const firstImg = allSlides[1].elements.find(el => el.type === 'image' || el.src);
+        previewThumb = firstImg ? firstImg.src : "";
+      }
+    }
+
+    const cartItem = {
+      id: id || `design-${Date.now()}`, 
+      name: designName || "Eid Greetings",
+      price: 600, 
+      quantity: 1, 
+      image: previewThumb, 
+      orientation: orientation || "portrait",
+      
+      slide1_url: previewThumb || allSlides[1]?.image || "",
+      slide2_url: allSlides[2]?.image || "", 
+      slide3_url: allSlides[3]?.image || "",
+      slide4_url: allSlides[4]?.image || "",
+      
+      designData: allSlides 
+    };
+
+    addToCart(cartItem, false);
+    navigate("/cart");
   };
-
-  // IMPORTANT: 'false' pass karne se modal nahi khulega
-  addToCart(cartItem, false);
-
-  // Navigate karein checkout page par
-  navigate("/cart");
-};
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -67,7 +81,7 @@ const handleCart = () => {
   const canvasBaseSize = orientation === 'portrait' ? { width: 400, height: 550 } : { width: 700, height: 450 };
 
   let previewWidth = isMobile ? windowWidth - 40 : (orientation === 'portrait' ? 400 : 550);
-  if (currentPage === 2 && !isMobile) previewWidth = orientation === 'portrait' ? 700 : 900; // Desktop Spread
+  if (currentPage === 2 && !isMobile) previewWidth = orientation === 'portrait' ? 700 : 900; 
 
   const scale = previewWidth / (currentPage === 2 && !isMobile ? canvasBaseSize.width * 2 : canvasBaseSize.width);
   const previewSize = {
@@ -82,7 +96,6 @@ const handleCart = () => {
     navigate(`/design-editor/${id}`, { state: { fromPreview: true } });
   };
 
-
   const RenderSlide = ({ slideNum, isSpreadMember = false }) => {
     const slide = allSlides[slideNum];
     if (!slide) return null;
@@ -90,7 +103,6 @@ const handleCart = () => {
     const elements = slide.elements || [];
     const bgColor = slide.bg || '#ffffff';
     const isLocked = isSlideLocked(slideNum);
-
     const stageWidth = isSpreadMember && !isMobile ? previewSize.width / 2 : previewSize.width;
 
     return (
@@ -101,6 +113,7 @@ const handleCart = () => {
         {isLocked && <div className="absolute inset-0 z-[100] bg-transparent" />}
 
         <Stage
+          ref={slideNum === 1 ? stageRef : null} 
           width={stageWidth}
           height={previewSize.height}
           scaleX={scale}
@@ -212,8 +225,6 @@ const handleCart = () => {
           </button>
         ))}
       </div>
-
-      
     </div>
   );
 };

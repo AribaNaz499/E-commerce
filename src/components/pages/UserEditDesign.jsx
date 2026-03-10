@@ -149,13 +149,10 @@ const UserEditDesign = () => {
         }
         setOrientation(detectedOrientation);
 
-        // Check if this is a fresh edit (coming from category/all designs page)
         const isFreshEdit = !location.state?.fromPreview;
 
         let finalSlides = {
-          // Slide 1 always from product content (admin published data)
           1: { elements: product.content?.elements || [], bg: product.content?.canvasBg || "#ffffff" },
-          // Slide 2 & 3: Empty for fresh edit, otherwise from DB
           2: isFreshEdit ? { elements: [], bg: "#ffffff" } :
             (await loadSlideFromDatabase(2) || { elements: [], bg: "#ffffff" }),
           3: isFreshEdit ? { elements: [], bg: "#ffffff" } :
@@ -163,13 +160,11 @@ const UserEditDesign = () => {
           4: (await loadSlideFromDatabase(4)) || { elements: [], bg: "#ffffff" }
         };
 
-        // Add logo to slide 4
         finalSlides = addFixedLogoToSlide4(finalSlides, detectedOrientation);
 
         setDesignName(product.name || "Untitled");
         setSlidesData(finalSlides);
 
-        // Initial setup for Slide 1
         setElements([...finalSlides[1].elements]);
         setCanvasBg(finalSlides[1].bg);
         setCurrentSlide(1);
@@ -215,13 +210,10 @@ const UserEditDesign = () => {
   const handleSlideChange = async (nextSlide) => {
     if (nextSlide === currentSlide || fetching) return;
 
-    // 1. Save current state before switching
     await saveSlideToDatabase(currentSlide, elements, canvasBg);
 
-    // 2. Prepare next slide data
     const nextData = slidesData[nextSlide] || { elements: [], bg: "#ffffff" };
 
-    // 3. Process interactivity based on slide number
     const processed = (nextData.elements || []).map(el => ({
       ...el,
       draggable: !(nextSlide === 1 || nextSlide === 4),
@@ -229,7 +221,6 @@ const UserEditDesign = () => {
       listening: !(nextSlide === 1 || nextSlide === 4)
     }));
 
-    // 4. Set state
     setElements(processed);
     setCanvasBg(nextData.bg);
     setCurrentSlide(nextSlide);
@@ -237,20 +228,70 @@ const UserEditDesign = () => {
     setIsToolPanelOpen(false);
   };
 
-  const handlePreview = async () => {
-    setIsSaving(true);
-    await saveSlideToDatabase(currentSlide, elements, canvasBg);
+const handlePreview = async () => {
+  setIsSaving(true);
+  const stage = context.stageRef.current;
+  
+  setSelectedId(null);
+  await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Sync local state before navigating
-    const finalSlides = {
-      ...slidesData,
-      [currentSlide]: { elements: [...elements], bg: canvasBg }
+  
+  const currentScreenshot = stage.toDataURL({ pixelRatio: 2 });
+
+  
+  const updatedSlides = {
+    ...slidesData,
+    [currentSlide]: { 
+      ...slidesData[currentSlide],
+      elements: [...elements], 
+      bg: canvasBg,
+      image: currentScreenshot 
+    }
+  };
+
+  navigate("/card-preview", {
+    state: { 
+      allSlides: updatedSlides, 
+      orientation, 
+      designName, 
+      id 
+    }
+  });
+  setIsSaving(false);
+};
+
+
+
+const handleAddToCart = async () => {
+    setIsSaving(true);
+    
+    const stage = context.stageRef.current;
+    let screenshot = "";
+
+    if (stage) {
+        setSelectedId(null); 
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        screenshot = stage.toDataURL({ pixelRatio: 2 }); 
+    }
+
+    const itemToCart = {
+        id: id,
+        name: designName,
+        orientation: orientation,
+        price: 600,
+        slide1_url: slidesData[1].elements[0]?.src || "", 
+        slide2_url: currentSlide === 2 ? screenshot : (slidesData[2].image || ""), 
+        slide3_url: currentSlide === 3 ? screenshot : (slidesData[3].image || ""),
+        slide4_url: slidesData[4].elements[0]?.src || "",
+        quantity: 1
     };
 
-    navigate("/card-preview", {
-      state: { allSlides: finalSlides, orientation, designName, id }
-    });
-  };
+    context.addToCart(itemToCart); 
+    alert("Design added to cart!");
+    navigate("/cart");
+};
 
   const handleBack = async () => {
     setIsSaving(true);
