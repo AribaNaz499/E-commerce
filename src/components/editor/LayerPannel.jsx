@@ -14,31 +14,18 @@ const LayerPannel = () => {
     setVideoFile
   } = useContext(CanvasContext);
 
-  
-  console.log("LayerPannel - selectedId:", selectedId);
-  console.log("LayerPannel - elements:", elements);
-  console.log("LayerPannel - audioFile:", audioFile);
-  console.log("LayerPannel - videoFile:", videoFile);
-
-  
   const selectedElement = elements.find(el => el.id === selectedId) || 
                          (selectedId === audioFile?.id ? audioFile : null) ||
                          (selectedId === videoFile?.id ? videoFile : null);
 
-  console.log("LayerPannel - selectedElement:", selectedElement);
-
-  
   if (!selectedId || !selectedElement) {
-    console.log("LayerPannel - No element selected, returning null");
     return null;
   }
 
   const moveElement = (direction) => {
     if (!selectedId) return;
-
     const index = elements.findIndex(el => el.id === selectedId);
     if (index === -1) return;
-
     const newElements = [...elements];
 
     switch(direction) {
@@ -63,7 +50,6 @@ const LayerPannel = () => {
       default:
         return;
     }
-
     setElements(newElements);
   };
 
@@ -78,7 +64,6 @@ const LayerPannel = () => {
     setSelectedId(null);
   };
 
-  
   let elementType = 'unknown';
   let elementIcon = '📄';
   
@@ -104,80 +89,75 @@ const LayerPannel = () => {
     }
   }
 
-  
   const getDisplayName = () => {
     if (!selectedElement) return '';
-    
     if (selectedElement.name) return selectedElement.name;
     if (selectedElement.text) {
-      
       return selectedElement.text.length > 15 
         ? selectedElement.text.substring(0, 15) + '...' 
         : selectedElement.text;
     }
     if (selectedElement.type === 'qrcode') return 'QR Code';
-    
-    return `${elementType} - ${selectedId?.slice(0, 8)}`;
+    return `${elementType}`;
   };
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-slate-200 px-4 py-3 rounded-2xl flex items-center gap-4 z-[200] animate-in fade-in zoom-in duration-200
+    <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-slate-200 
+      px-2 py-2 md:px-4 md:py-3 rounded-2xl flex items-center gap-2 md:gap-4 z-[200] animate-in fade-in zoom-in duration-200
+      w-[95%] sm:w-auto min-w-fit max-w-[95vw] sm:max-w-none
     ">
       
-      
-      <div className="flex items-center gap-2 border-r pr-4 ">
-        <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-full capitalize flex items-center gap-1">
-          {elementIcon} {elementType}
+      <div className="flex items-center gap-1 md:gap-2 border-r pr-2 md:pr-4 flex-shrink-0">
+        <span className="text-[10px] md:text-xs font-medium bg-purple-100 text-purple-700 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full capitalize flex items-center gap-1 whitespace-nowrap">
+          {elementIcon} <span className="hidden xs:inline">{elementType}</span>
         </span>
-        <span className="text-sm text-slate-600 max-w-[150px] truncate">
+        <span className="text-xs md:text-sm text-slate-600 max-w-[60px] xs:max-w-[100px] md:max-w-[150px] truncate font-medium">
           {getDisplayName()}
         </span>
       </div>
 
-  
       {(elementType !== 'audio' && elementType !== 'video') && (
-        <div className="flex border-r pr-3 gap-1">
+        <div className="flex border-r pr-1 md:pr-3 gap-0.5 md:gap-1 flex-shrink-0">
           <button
             onClick={() => moveElement('toFront')}
-            className="p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
+            className="p-1 md:p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
             title="Bring to Front"
           >
-            <MoveUp size={18} />
+            <MoveUp className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </button>
 
           <button
             onClick={() => moveElement('forward')}
-            className="p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
+            className="p-1 md:p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
             title="Bring Forward"
           >
-            <ChevronUp size={18} />
+            <ChevronUp className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </button>
 
           <button
             onClick={() => moveElement('backward')}
-            className="p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
+            className="p-1 md:p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
             title="Send Backward"
           >
-            <ChevronDown size={18} />
+            <ChevronDown className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </button>
 
           <button
             onClick={() => moveElement('toBack')}
-            className="p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
+            className="p-1 md:p-2 hover:bg-purple-100 active:bg-purple-200 active:scale-90 rounded-lg text-slate-600 hover:text-purple-600 transition-all duration-150"
             title="Send to Back"
           >
-            <MoveDown size={18} />
+            <MoveDown className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </button>
         </div>
       )}
 
-      
       <button
         onClick={handleDelete}
-        className="bg-red-50 text-red-500 p-2.5 rounded-xl hover:bg-red-500 hover:text-white active:scale-95 transition-all duration-150"
+        className="bg-red-50 text-red-500 p-1.5 md:p-2.5 rounded-xl hover:bg-red-500 hover:text-white active:scale-95 transition-all duration-150 flex-shrink-0"
         title="Delete Element"
       >
-        <Trash2 size={20} />
+        <Trash2 className="w-4 h-4 md:w-[20px] md:h-[20px]" />
       </button>
     </div>
   );

@@ -22,20 +22,14 @@ const CardPreview = () => {
 
   const handleCart = async () => {
     let previewThumb = "";
-
     if (currentPage !== 1) {
       setCurrentPage(1);
       await new Promise(resolve => setTimeout(resolve, 50));
     }
-
     if (stageRef.current) {
       previewThumb = stageRef.current.toDataURL({ pixelRatio: 2 });
     } else {
       previewThumb = allSlides[1]?.image || "";
-      if (!previewThumb && allSlides[1]?.elements) {
-        const firstImg = allSlides[1].elements.find(el => el.type === 'image' || el.src);
-        previewThumb = firstImg ? firstImg.src : "";
-      }
     }
 
     const cartItem = {
@@ -45,15 +39,8 @@ const CardPreview = () => {
       quantity: 1, 
       image: previewThumb, 
       orientation: orientation || "portrait",
-      
-      slide1_url: previewThumb || allSlides[1]?.image || "",
-      slide2_url: allSlides[2]?.image || "", 
-      slide3_url: allSlides[3]?.image || "",
-      slide4_url: allSlides[4]?.image || "",
-      
       designData: allSlides 
     };
-
     addToCart(cartItem, false);
     navigate("/cart");
   };
@@ -64,42 +51,25 @@ const CardPreview = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (!allSlides) {
-    return (
-      <div className="h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">No Design Found</h2>
-          <button onClick={() => navigate(-1)} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (!allSlides) return null;
 
   const isMobile = windowWidth < 768;
   const canvasBaseSize = orientation === 'portrait' ? { width: 400, height: 550 } : { width: 700, height: 450 };
 
-  let previewWidth = isMobile ? windowWidth - 40 : (orientation === 'portrait' ? 400 : 550);
-  if (currentPage === 2 && !isMobile) previewWidth = orientation === 'portrait' ? 700 : 900; 
+  let previewWidth = isMobile ? windowWidth - 48 : (orientation === 'portrait' ? 400 : 550);
+  if (currentPage === 2 && !isMobile) previewWidth = orientation === 'portrait' ? 740 : 900; 
 
   const scale = previewWidth / (currentPage === 2 && !isMobile ? canvasBaseSize.width * 2 : canvasBaseSize.width);
   const previewSize = {
     width: previewWidth,
-    height: canvasBaseSize.height * (previewWidth / (currentPage === 2 && !isMobile ? canvasBaseSize.width * 2 : canvasBaseSize.width))
+    height: canvasBaseSize.height * scale
   };
 
   const isSlideLocked = (slideNum) => slideNum === 1 || slideNum === 4;
 
-  const handleBackToEdit = () => {
-    if (!id) return navigate(-1);
-    navigate(`/design-editor/${id}`, { state: { fromPreview: true } });
-  };
-
   const RenderSlide = ({ slideNum, isSpreadMember = false }) => {
     const slide = allSlides[slideNum];
     if (!slide) return null;
-
     const elements = slide.elements || [];
     const bgColor = slide.bg || '#ffffff';
     const isLocked = isSlideLocked(slideNum);
@@ -107,11 +77,9 @@ const CardPreview = () => {
 
     return (
       <div
-        className={`relative overflow-hidden transition-all duration-500 ease-in-out ${isLocked ? 'cursor-not-allowed select-none' : 'cursor-default'}`}
+        className={`relative overflow-hidden transition-all duration-700 ease-in-out ${isLocked ? 'cursor-not-allowed' : ''}`}
         style={{ backgroundColor: bgColor, width: stageWidth, height: previewSize.height }}
       >
-        {isLocked && <div className="absolute inset-0 z-[100] bg-transparent" />}
-
         <Stage
           ref={slideNum === 1 ? stageRef : null} 
           width={stageWidth}
@@ -125,19 +93,13 @@ const CardPreview = () => {
             {elements.map((el) => {
               if (!el) return null;
               const commonProps = { el, isSelected: false, onChange: () => { }, draggable: false };
-
               if (el.type === 'text') return <EditableText key={el.id} {...commonProps} />;
               if (el.type === 'image' || el.type === 'qrcode' || (el.src && !el.src.endsWith('.mp3') && !el.src.endsWith('.mp4'))) {
                 return <URLImage key={el.id} {...commonProps} />;
               }
               if (el.type === 'video' || (el.src && el.src.endsWith('.mp4'))) return <CanvasVideo key={el.id} {...commonProps} />;
               if (el.type === 'audio' || (el.src && el.src.endsWith('.mp3'))) {
-                return (
-                  <CanvasAudioPlayer
-                    key={el.id} {...commonProps} audioData={el}
-                    isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)}
-                  />
-                );
+                return <CanvasAudioPlayer key={el.id} {...commonProps} audioData={el} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} />;
               }
               return null;
             })}
@@ -147,81 +109,64 @@ const CardPreview = () => {
     );
   };
 
-  const renderCurrentView = () => {
-    switch (currentPage) {
-      case 1: return <RenderSlide slideNum={1} />;
-      case 2:
-        return (
-          <div className={`flex ${isMobile ? 'flex-col gap-4' : 'flex-row'}`}>
-            <div className={`${!isMobile ? 'border-r border-gray-300' : ''}`}><RenderSlide slideNum={2} isSpreadMember={true} /></div>
-            <div><RenderSlide slideNum={3} isSpreadMember={true} /></div>
-          </div>
-        );
-      case 3: return <RenderSlide slideNum={4} />;
-      default: return null;
-    }
-  };
-
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center py-4 md:py-8 font-sans overflow-hidden">
-
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        html, body { 
-          overflow: hidden !important; 
-          height: 100%;
-          margin: 0;
-        }
-        ::-webkit-scrollbar {
-          display: none;
-        }
-        * {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}} />
-
-      <div className="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-6 md:mb-8 px-4 md:px-6 gap-4 shrink-0">
-        <div className="flex items-center justify-between w-full md:w-auto gap-4">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
-            <ArrowLeft size={20} /> <span className="hidden md:inline">Back</span>
+    <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center py-4 font-sans overflow-x-hidden">
+      
+      <div className="w-full max-w-6xl flex flex-col justify-between items-center mb-4 px-4 gap-4 shrink-0">
+        <div className="flex items-center justify-between w-full gap-4">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-600 font-medium">
+            <ArrowLeft size={18} /> Back
           </button>
-          <h1 className="text-lg md:text-xl font-bold text-gray-800 truncate max-w-[180px] md:max-w-none">
+          <h1 className="text-base md:text-xl font-bold text-gray-800 truncate">
             {designName || "Card Preview"}
           </h1>
+          <div className="w-10 md:hidden"></div> 
         </div>
 
         <div className="flex gap-2 w-full md:w-auto">
-          <button onClick={handleBackToEdit} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+          <button onClick={() => navigate(`/design-editor/${id}`)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700">
             <Edit3 size={16} /> Edit
           </button>
-          <button onClick={handleCart} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 px-4 py-2 rounded-lg text-sm text-white shadow-md hover:bg-blue-700">
-            <ShoppingCart size={16} /> <span className="whitespace-nowrap">Add to Cart</span>
+          <button onClick={handleCart} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md shadow-blue-200">
+            <ShoppingCart size={16} /> Add to Cart
           </button>
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center w-full overflow-hidden px-4">
-        <div className="bg-white p-2 md:p-6 rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-500 max-h-full overflow-hidden">
-          <div className="flex justify-center items-center">
-            {renderCurrentView()}
+      <div className="flex-1 flex items-center justify-center w-full px-4 overflow-y-auto">
+        <div className={`bg-white p-1.5 md:p-4 rounded-2xl shadow-xl transition-all duration-500 transform ${isMobile ? 'scale-100' : 'hover:scale-[1.01]'}`}>
+          <div className="flex justify-center items-center overflow-hidden rounded-xl">
+            
+            <div key={currentPage} className="animate-in fade-in slide-in-from-right-4 duration-500">
+                {currentPage === 1 && <RenderSlide slideNum={1} />}
+                {currentPage === 2 && (
+                    <div className={`flex ${isMobile ? 'flex-col gap-2' : 'flex-row'}`}>
+                        <RenderSlide slideNum={2} isSpreadMember={true} />
+                        <RenderSlide slideNum={3} isSpreadMember={true} />
+                    </div>
+                )}
+                {currentPage === 3 && <RenderSlide slideNum={4} />}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap justify-center gap-2 md:gap-3 bg-white p-1.5 rounded-xl shadow-lg border border-gray-200 mx-4 shrink-0">
+      <div className="sticky bottom-4 mt-6 flex justify-center gap-1.5 md:gap-3 bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-white/50 mx-4 shrink-0 z-50">
         {[
-          { id: 1, label: "Front Cover", lock: true },
+          { id: 1, label: "Front", lock: true },
           { id: 2, label: "Inside", lock: false },
-          { id: 3, label: "Back Cover", lock: true }
+          { id: 3, label: "Back", lock: true }
         ].map((btn) => (
           <button
             key={btn.id}
             onClick={() => setCurrentPage(btn.id)}
-            className={`px-4 md:px-8 py-2 md:py-3 rounded-lg font-medium text-xs md:text-sm transition-all flex items-center gap-2 ${currentPage === btn.id ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'
-              }`}
+            className={`px-5 md:px-8 py-2.5 md:py-3 rounded-xl font-bold text-[11px] md:text-sm transition-all flex items-center gap-2 ${
+                currentPage === btn.id 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-105' 
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
           >
-            {btn.lock && <Lock size={14} />} {btn.label}
+            {btn.lock && <Lock size={12} />} {btn.label}
           </button>
         ))}
       </div>

@@ -32,53 +32,49 @@ const AddToCart = () => {
     const finalShipping = cartItems.length > 0 ? shippingCost : 0;
     const total = cartItems.length > 0 ? (Number(subtotal) + shippingCost) : 0;
 
-    const handleContinueToPayment = async () => {
-        if (cartItems.length === 0) {
-            alert("Your cart is empty!");
-            return;
+const handleContinueToPayment = async () => {
+    // Basic Check
+    if (!formData.email || !formData.firstName) {
+        alert("Please enter your name and email first!");
+        return;
+    }
+
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2b3BtdGFib2d2Z3JwdGlwaXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Nzc1MDgsImV4cCI6MjA4NzE1MzUwOH0.s4DzQX6iG3-bkD_SqBuCOdGN4X7O1hO53J4hd-MfV9U';
+
+    try {
+        const response = await fetch('https://ivopmtabogvgrptipiwo.supabase.co/functions/v1/stripe-checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${supabaseAnonKey}` 
+            },
+            body: JSON.stringify({
+                items: cartItems.map(item => ({
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity
+                })),
+                email: formData.email,      
+                firstName: formData.firstName,
+                totalAmount: total
+            }),
+        });
+
+        const data = await response.json();
+
+        if (data.url) {
+            
+            window.location.href = data.url;
+        } else {
+            console.error("Backend Error:", data.error);
+        
         }
-        if (!formData.email) {
-            alert("Please enter your email address first.");
-            return;
-        }
-
-        try {
-            const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2b3BtdGFib2d2Z3JwdGlwaXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Nzc1MDgsImV4cCI6MjA4NzE1MzUwOH0.s4DzQX6iG3-bkD_SqBuCOdGN4X7O1hO53J4hd-MfV9U";
-
-            const response = await fetch('https://ivopmtabogvgrptipiwo.supabase.co/functions/v1/stripe-checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                },
-                body: JSON.stringify({
-                    items: cartItems.map(item => ({
-                        name: item.name,
-                        price: item.price,
-                        quantity: item.quantity
-                    })),
-                    email: formData.email,
-                    totalAmount: total,
-                }),
-            });
-
-            const data = await response.json();
-            console.log("Response from Supabase:", data); 
-
-            if (data.url) {
-                window.location.href = data.url; 
-            } else {
-                console.error("Stripe Error Details:", data.error);
-                alert("Error: " + (data.error || "Stripe URL not found. Check Console."));
-            }
-
-        } catch (err) {
-            console.error("Fetch Error:", err);
-            alert("Connection Error: Could not reach the payment server.");
-        }
-    };
-
+    } catch (err) {
+        console.error("Network Error:", err);
+        
+    }
+};
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             <UserNavbar />
@@ -223,3 +219,4 @@ const AddToCart = () => {
 };
 
 export default AddToCart;
+
