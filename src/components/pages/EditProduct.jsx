@@ -134,7 +134,7 @@ const EditProduct = () => {
 
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
-            <span className="text-gray-400 font-bold text-[10px]">RS</span>
+            <span className="text-gray-400 font-bold text-[10px]">$</span>
             <input 
               type="number"
               value={price}

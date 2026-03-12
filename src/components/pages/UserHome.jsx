@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom';
-import LogoImg from '../../assets/images/logo.png';
 import BackgroundImg from '../../assets/images/bg.jpg';
 import PosterImg from '../../assets/images/poster.jpg';
 import Logos from '../../assets/images/logos.jpg';
@@ -16,6 +15,7 @@ const UserHome = () => {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+  const LogoImg = "/assets/logo.png";
 
     const { addToCart } = useCart();
 

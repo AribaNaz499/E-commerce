@@ -5,9 +5,10 @@ import URLImage from "../../canvas/URLImage";
 import EditableText from "../../canvas/EditableText";
 import CanvasVideo from "../../canvas/CanvasVideo";
 import CanvasAudioPlayer from "../../canvas/CanvasAudioPlayer";
-import { Lock } from 'lucide-react'; 
+import { Lock } from 'lucide-react';
 
 const CanvasArea = ({ elements: propElements, orientation: propOrientation , isLocked }) => {
+
   const context = useContext(CanvasContext);
   if (!context) return null;
 
@@ -38,33 +39,55 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
   const currentSize = canvasDimensions[orientation] || canvasDimensions.portrait;
 
   useEffect(() => {
+
     if (!stageRef.current) return;
+
     if (selectedId) {
+
       const node = stageRef.current.findOne(`#${selectedId}`);
+
       setSelectedNode(node);
+
       if (trRef.current && node) {
+
         trRef.current.nodes([node]);
         trRef.current.getLayer().batchDraw();
+
       }
+
     } else {
+
       setSelectedNode(null);
+
       if (trRef.current) trRef.current.nodes([]);
+
     }
+
   }, [selectedId, activeElements]);
 
 
+  /* BLOCK DRAG START */
+  const handleDragStart = (e) => {
+    if (isLocked) {
+      e.target.stopDrag();
+    }
+  };
+
   const handleDragEnd = (e, id) => {
-    // Agar locked hai to drag na hone dein
+
     if (isLocked) return;
+
     handleElementUpdate(id, {
       x: e.target.x(),
       y: e.target.y(),
     });
+
   };
 
   const handleTransformEnd = (e, id) => {
+
     if (isLocked) return;
-    
+
     const node = e.target;
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
@@ -79,37 +102,47 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
       height: Math.max(5, node.height() * scaleY),
       rotation: node.rotation(),
     });
+
   };
 
   const handleStageMouseDown = (e) => {
+
     if (isLocked) {
       setSelectedId(null);
       return;
     }
-    
+
     if (e.target === e.target.getStage()) {
       setSelectedId(null);
     }
+
   };
 
   return (
+
     <div
-      className="flex items-center justify-center bg-white shadow-inner transition-all duration-300 relative  ${isLocked ? 'cursor-not-allowed' : ''}" // ✅ relative class add ki
+      className={`flex items-center justify-center bg-white shadow-inner transition-all duration-300 relative ${isLocked ? 'cursor-not-allowed' : ''}`}
       style={{ width: currentSize.width, height: currentSize.height }}
     >
-      <Stage
-        ref={stageRef}
-        width={currentSize.width}
-        height={currentSize.height}
-        key={`stage-${orientation}`} 
-        onMouseDown={handleStageMouseDown}
-        onTouchStart={handleStageMouseDown}
-          style={{ cursor: isLocked ? 'not-allowed' : 'default' }}
 
-      >
+     <Stage
+  ref={stageRef}
+  width={currentSize.width}
+  height={currentSize.height}
+  key={`stage-${orientation}`}
+  onMouseDown={handleStageMouseDown}
+  onTouchStart={handleStageMouseDown}
+  style={{
+    cursor: isLocked ? 'not-allowed' : 'default',
+    pointerEvents: isLocked ? 'none' : 'auto'
+  }}
+>
+
         <Layer ref={layerRef}>
+
           <Rect
-            x={0} y={0}
+            x={0}
+            y={0}
             width={currentSize.width}
             height={currentSize.height}
             fill={canvasBg || "#ffffff"}
@@ -117,43 +150,59 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
           />
 
           {activeElements.map((el) => {
+
             if (!el) return null;
 
             const elementWithLock = {
               ...el,
-              isLocked: isLocked || el.isFixed || el.isLogo 
+              isLocked: isLocked || el.isFixed || el.isLogo
             };
 
             const commonProps = {
+
               id: el.id,
-              el: elementWithLock, 
-              isSelected: selectedId === el.id && !isLocked, 
+              el: elementWithLock,
+
+              draggable: !isLocked,
+
+              isSelected: selectedId === el.id && !isLocked,
+
               onSelect: () => {
-                
+
                 if (!isLocked) {
                   setSelectedId(el.id);
                 }
+
               },
+
+              onDragStart: handleDragStart,
+
               onDragEnd: (e) => handleDragEnd(e, el.id),
+
               onTransformEnd: (e) => handleTransformEnd(e, el.id),
+
               onChange: (attr) => {
-              
+
                 if (!isLocked) {
                   handleElementUpdate(el.id, attr);
                 }
+
               }
+
             };
 
             if (el.type === "audio" || String(el.id).includes("audio")) {
+
               return (
                 <CanvasAudioPlayer
                   key={el.id}
                   {...commonProps}
                   audioData={el}
                   isPlaying={isPlaying}
-                  onTogglePlay={() => !isLocked && setIsPlaying(!isPlaying)} 
+                  onTogglePlay={() => !isLocked && setIsPlaying(!isPlaying)}
                 />
               );
+
             }
 
             if (el.type === "text") {
@@ -169,28 +218,42 @@ const CanvasArea = ({ elements: propElements, orientation: propOrientation , isL
             }
 
             return null;
+
           })}
 
           {selectedId && !isLocked && (
+
             <Transformer
               ref={trRef}
               keepRatio={true}
               anchorFill={selectedNode?.getAttr("isCropping") ? "#f59e0b" : "#ffffff"}
               anchorStroke="#3b82f6"
               borderStroke={selectedNode?.getAttr("isCropping") ? "#f59e0b" : "#3b82f6"}
-              boundBoxFunc={(oldBox, newBox) => (newBox.width < 20 || newBox.height < 20 ? oldBox : newBox)}
+              boundBoxFunc={(oldBox, newBox) =>
+                newBox.width < 20 || newBox.height < 20 ? oldBox : newBox
+              }
             />
+
           )}
+
         </Layer>
+
       </Stage>
-      
+
       {isLocked && (
+
         <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 pointer-events-none">
+
           <Lock size={12} /> Slide Locked
+
         </div>
+
       )}
+
     </div>
+
   );
+
 };
 
 export default CanvasArea;

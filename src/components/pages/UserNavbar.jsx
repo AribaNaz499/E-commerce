@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Heart, ShoppingCart, Menu, X, LogOut, Trash2 } from "lucide-react";
 import { useNavigate, NavLink } from 'react-router-dom';
-import LogoImg from "../../assets/images/logo.png";
 import { supabase } from "../../config/supabaseClient";
 import { useCart } from '../../context/CartContext';
 
@@ -9,11 +8,12 @@ const UserNavbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isCartOpen, openCart, closeCart, cartItems, removeFromCart, subtotal } = useCart();
   const navigate = useNavigate();
+  const LogoImg = "/assets/logo.png";
 
   const navLinkStyles = ({ isActive }) => {
     return `transition-all duration-300 pb-1 ${isActive
-        ? "text-rose-800 border-b-2 border-rose-600 font-bold"
-        : "text-gray-800 hover:text-rose-600 font-semibold"
+      ? "text-rose-800 border-b-2 border-rose-600 font-bold"
+      : "text-gray-800 hover:text-rose-600 font-semibold"
       }`;
   };
 
@@ -21,7 +21,7 @@ const UserNavbar = () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      navigate('/login'); 
+      navigate('/login');
     } catch (error) {
       console.error('Logout error:', error.message);
     }
@@ -91,7 +91,6 @@ const UserNavbar = () => {
             <LogOut size={18} />
           </button>
 
-     
           <button
             className="md:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -100,6 +99,7 @@ const UserNavbar = () => {
           </button>
         </div>
       </nav>
+
 
       {isMenuOpen && (
         <div className="md:hidden bg-white mt-2 rounded-xl p-4 shadow-lg flex flex-col gap-4 text-gray-800 relative z-50 animate-in fade-in zoom-in duration-200">
@@ -112,6 +112,7 @@ const UserNavbar = () => {
           </button>
         </div>
       )}
+
 
       {isCartOpen && (
         <>
@@ -136,15 +137,21 @@ const UserNavbar = () => {
                   {cartItems.map((item) => (
                     <div key={item.id} className="flex items-center gap-4 group">
                       <img
-                        src={item.image || item.image_url}
+                        src={
+                          item.userDesign1?.trim() ? item.userDesign1 :
+                            item.image ? item.image :
+                              item.image_url ? item.image_url :
+                                'https://via.placeholder.com/150'
+                        }
                         alt={item.name}
                         className="w-16 h-16 object-cover rounded-lg bg-rose-50"
-                        onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Preview'; }}
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }}
                       />
                       <div className="flex-1">
                         <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
                         <p className="text-gray-500 text-xs">
-                          {item.quantity} x <span className="text-rose-700 font-semibold">Rs. {item.price}</span>
+
+                          {item.quantity} x <span className="text-rose-700 font-semibold">${item.price}</span>
                         </p>
                       </div>
                       <button onClick={() => removeFromCart(item.id)} className="text-gray-400 hover:text-red-500">
@@ -161,7 +168,8 @@ const UserNavbar = () => {
             <div className="p-6 border-t bg-gray-50">
               <div className="flex justify-between items-center mb-6 font-bold">
                 <span>Subtotal</span>
-                <span className="text-rose-700 text-xl">Rs. {subtotal}</span>
+
+                <span className="text-rose-700 text-xl">${subtotal}</span>
               </div>
               <button
                 onClick={() => { closeCart(); navigate('/cart'); }}

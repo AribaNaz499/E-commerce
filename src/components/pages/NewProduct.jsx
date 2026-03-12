@@ -167,7 +167,7 @@ const NewProduct = () => {
         <div className="flex items-center gap-3">
          
           <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
-            <span className="text-gray-400 font-bold text-xs">RS</span>
+            <span className="text-gray-400 font-bold text-xs">$</span>
             <input
               type="number"
               value={price}

@@ -143,7 +143,7 @@ const AllProducts = () => {
               <option value="all">All Categories</option>
               <option value="Posters">Posters</option>
               <option value="Social Media">Social Media</option>
-              <option value="Kids Designs">Kids Designs</option>
+              <option value="Kids Design">Kids Designs</option>
               <option value="Logos">Logos</option>
             </select>
           </div>

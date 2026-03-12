@@ -8,48 +8,79 @@ const URLImage = ({ el, isSelected, onSelect, onChange }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCropping, setIsCropping] = useState(false);
 
-  useEffect(() => {
-    if (!el?.src) {
-      setImageError(true);
-      setIsLoading(false);
-      return;
+  const resolveImagePath = (src) => {
+    if (!src) return src;
+    
+    if (src.startsWith('http') || src.startsWith('data:')) {
+      return src;
     }
-
-    setIsLoading(true);
-    setImageError(false);
-
-    const img = new window.Image();
-    if (typeof el.src === 'string' && el.src.startsWith('http')) {
-      img.crossOrigin = "anonymous";
+    
+    if (src.startsWith('/assets/')) {
+      return src; 
     }
+    
+    if (src.includes('/src/assets/')) {
+      return src.replace('/src', ''); 
+    }
+    
+    return src;
+  };
 
-    img.src = el.src;
+useEffect(() => {
+  if (!el?.src) {
+    setImageError(true);
+    setIsLoading(false);
+    return;
+  }
 
-    img.onload = () => {
-      setImageObj(img);
-      setIsLoading(false);
-      
-      if (!el.crop || el.crop.width === 0) {
-        onChange({
-          ...el,
-          originalWidth: img.width,
-          originalHeight: img.height,
-          crop: { x: 0, y: 0, width: img.width, height: img.height },
-        });
-      }
-    };
+  setIsLoading(true);
+  setImageError(false);
 
-    img.onerror = (err) => {
-      console.error("❌ Image Load Failed:", el.src, err);
-      setImageError(true);
-      setIsLoading(false);
-    };
+  const img = new window.Image();
+  
+  let imageSrc = el.src;
+  if (el.isLogo) {
+    
+    imageSrc = '/assets/logo.png';
+  } else {
+    
+    if (imageSrc.includes('/assets/images/')) {
+      imageSrc = imageSrc.replace('/images', '');
+    }
+  }
+  
+  if (typeof imageSrc === 'string' && imageSrc.startsWith('http')) {
+    img.crossOrigin = "anonymous";
+  }
 
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [el?.src]);
+  img.src = imageSrc;
+
+  img.onload = () => {
+    console.log("✅ Logo loaded successfully from:", imageSrc);
+    setImageObj(img);
+    setIsLoading(false);
+    
+    if (!el.crop || el.crop.width === 0) {
+      onChange({
+        ...el,
+        originalWidth: img.width,
+        originalHeight: img.height,
+        crop: { x: 0, y: 0, width: img.width, height: img.height },
+      });
+    }
+  };
+
+  img.onerror = (err) => {
+    console.error("❌ Image Load Failed:", imageSrc, err);
+    setImageError(true);
+    setIsLoading(false);
+  };
+
+  return () => {
+    img.onload = null;
+    img.onerror = null;
+  };
+}, [el?.src]);
 
   const handleDoubleClick = (e) => {
     if (el.isFixed) return;
