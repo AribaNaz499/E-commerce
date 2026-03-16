@@ -32,44 +32,82 @@ const AddToCart = () => {
     const finalShipping = cartItems.length > 0 ? shippingCost : 0;
     const total = calculatedSubtotal + finalShipping;
 
-    const handlePayment = async () => {
-        if (!formData.firstName || !formData.email || !formData.address) {
-            alert("Please fill in shipping details");
-            return;
+    
+    const getImageSource = (item) => {
+        
+        if (item.userDesign1 && item.userDesign1.trim() !== '') {
+            return item.userDesign1;
         }
-
-        setLoading(true);
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2b3BtdGFib2d2Z3JwdGlwaXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Nzc1MDgsImV4cCI6MjA4NzE1MzUwOH0.s4DzQX6iG3-bkD_SqBuCOdGN4X7O1hO53J4hd-MfV9U";
-
-        try {
-            const response = await fetch('https://ivopmtabogvgrptipiwo.supabase.co/functions/v1/stripe-checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                },
-                body: JSON.stringify({
-                    items: cartItems,
-                    email: formData.email,
-                    firstName: formData.firstName,
-                    sendEmailImmediate: true 
-                })
-            });
-
-            const data = await response.json();
-            if (data.url) {
-                window.location.href = data.url;
-            }
-        } catch (err) {
-            console.error("Payment failed:", err);
-            alert("Error occurred!");
-        } finally {
-            setLoading(false);
+        if (item.image && item.image.trim() !== '') {
+            return item.image;
         }
+        if (item.image_url && item.image_url.trim() !== '') {
+            return item.image_url;
+        }
+        if (item.main_image && item.main_image.trim() !== '') {
+            return item.main_image;
+        }
+        if (!item.isEdited && item.designData?.[1]?.elements?.[0]?.src) {
+            return item.designData[1].elements[0].src;
+        }
+        return 'https://via.placeholder.com/150?text=No+Image';
     };
 
+ const handlePayment = async () => {
+    if (!formData.firstName || !formData.email || !formData.address) {
+        alert("Please fill in shipping details");
+        return;
+    }
 
+    setLoading(true);
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2b3BtdGFib2d2Z3JwdGlwaXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Nzc1MDgsImV4cCI6MjA4NzE1MzUwOH0.s4DzQX6iG3-bkD_SqBuCOdGN4X7O1hO53J4hd-MfV9U"; 
+
+    try {
+        const response = await fetch('https://ivopmtabogvgrptipiwo.supabase.co/functions/v1/stripe-checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+                items: cartItems.map(it => ({
+                    id: it.id,
+                    name: it.name,
+                    price: it.price,
+                    quantity: it.quantity,
+                    isEdited: it.isEdited || false,
+                    userDesign1: it.userDesign1 || it.image || '',
+                    userDesign2: it.userDesign2 || '',
+                    userDesign3: it.userDesign3 || '',
+                    userDesign4: it.userDesign4 || ''
+                })),
+                email: formData.email,
+                firstName: formData.firstName
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.url) {
+            const orderData = {
+                items: cartItems,
+                firstName: formData.firstName,
+                address: formData.address
+            };
+            localStorage.setItem('pendingOrder', JSON.stringify(orderData));
+            
+            window.location.href = data.url;
+        } else {
+            alert("Error: " + (data.error || "Payment initialization failed."));
+        }
+    } catch (err) {
+        console.error("Payment failed:", err);
+        alert("Server error, please try again.");
+    } finally {
+        setLoading(false);
+    }
+};
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             <UserNavbar />
@@ -109,29 +147,21 @@ const AddToCart = () => {
                                     <div key={item.id} className="p-4 border border-slate-100 rounded-2xl bg-slate-50/30">
                                         <div className="flex gap-4">
                                             <div className="w-16 h-16 bg-white rounded-xl overflow-hidden border border-slate-200 flex-shrink-0">
-
-<img
-    src={
-        item.userDesign1 && item.userDesign1.trim() !== "" 
-            ? item.userDesign1 
-            : 
-        item.image 
-            ? item.image 
-            : 
-        item.image_url 
-            ? item.image_url 
-            : 
-        item.main_image 
-            ? item.main_image 
-            : 
-        'https://via.placeholder.com/150'
-    }
-    alt={item.name}
-    className="w-full h-full object-cover"
-    onError={(e) => { 
-        e.target.src = 'https://via.placeholder.com/150'; 
-    }}
-/>
+                                                <img
+                                                    src={getImageSource(item)}
+                                                    alt={item.name}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => { 
+                                                        console.log("Image error for:", item.name);
+                                                        e.target.src = 'https://via.placeholder.com/150?text=No+Image'; 
+                                                    }}
+                                                />
+                                            
+                                                {item.isEdited && (
+                                                    <span className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">
+                                                        Edited
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between">

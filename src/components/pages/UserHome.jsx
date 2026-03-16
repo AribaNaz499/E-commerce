@@ -5,7 +5,7 @@ import PosterImg from '../../assets/images/poster.jpg';
 import Logos from '../../assets/images/logos.jpg';
 import SocialMedia from '../../assets/images/socialMedia.jpg';
 import KidsDesign from '../../assets/images/kids.jpg';
-import { useCart } from '../../context/CartContext'; 
+import { useCart } from '../../context/CartContext';
 import { Search, User, Heart, ShoppingCart, Menu, X, Share, GitCompare, ChevronDown } from 'lucide-react';
 import UserNavbar from './UserNavbar';
 import UserFooter from './UserFooter';
@@ -15,7 +15,7 @@ const UserHome = () => {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
-  const LogoImg = "/assets/logo.png";
+    const LogoImg = "/assets/logo.png";
 
     const { addToCart } = useCart();
 
@@ -103,7 +103,7 @@ const UserHome = () => {
                 </div>
             </div>
 
-            
+
             <div className="mt-20 text-center px-6 mb-12">
                 <h3 className="font-bold text-2xl md:text-3xl text-gray-800">Our Designs</h3>
 
@@ -122,11 +122,22 @@ const UserHome = () => {
 
                                         <div className="hidden md:flex absolute inset-0 bg-black/50 flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                             <button
-                                                onClick={() => addToCart(product)} 
+                                                onClick={() => addToCart({
+                                                    id: product.id,
+                                                    name: product.name,
+                                                    price: product.price || 600,
+                                                    quantity: 1,
+                                                    image: product.image_url,
+                                                    userDesign1: product.image_url,
+                                                    userDesign2: '',
+                                                    userDesign3: '',
+                                                    userDesign4: '',
+                                                    isEdited: false,
+                                                })}
                                                 className="bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 hover:bg-rose-50 transition-colors"
                                             >
                                                 Add to cart
-                                            </button>            
+                                            </button>
                                             <button onClick={() => handleEditPage(product.id)} className='bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-50 active:scale-95'>Edit</button>
                                             <div className="flex items-center gap-4 text-white font-semibold text-sm">
                                                 <button className="flex items-center gap-1 hover:text-yellow-500"><Share size={16} /> Share</button>
@@ -149,10 +160,10 @@ const UserHome = () => {
                                             </button>
                                         </div>
 
-                                
+
                                         <div className="mt-4 flex flex-col gap-2 md:hidden">
-                                            <button 
-                                                onClick={() => addToCart(product)} 
+                                            <button
+                                                onClick={() => addToCart(product)}
                                                 className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-lg active:scale-95 transition-transform">
                                                 Add to Cart
                                             </button>

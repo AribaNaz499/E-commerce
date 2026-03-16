@@ -4,10 +4,10 @@ import { supabase } from "../../config/supabaseClient";
 import UserNavbar from './UserNavbar';
 import UserFooter from './UserFooter';
 import { Share, GitCompare, Heart } from 'lucide-react';
-import { useCart } from '../../context/CartContext'; 
+import { useCart } from '../../context/CartContext';
 
 const CategoryPage = () => {
-    const { categoryName } = useParams(); 
+    const { categoryName } = useParams();
     const navigate = useNavigate();
     const [designs, setDesigns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,15 +15,15 @@ const CategoryPage = () => {
     const { addToCart } = useCart();
 
     const handleEditPage = (id) => {
-        navigate(`/design-editor/${id}`, { 
-            state: { fromPreview: false } 
+        navigate(`/design-editor/${id}`, {
+            state: { fromPreview: false }
         });
     };
 
     useEffect(() => {
         const fetchCategoryDesigns = async () => {
             setLoading(true);
-            const formattedCategory = categoryName.split('-').map(word => 
+            const formattedCategory = categoryName.split('-').map(word =>
                 word.charAt(0).toUpperCase() + word.slice(1)
             ).join(' ');
 
@@ -31,7 +31,7 @@ const CategoryPage = () => {
                 const { data, error } = await supabase
                     .from('products')
                     .select('*')
-                    .ilike('category', `%${formattedCategory}%`); 
+                    .ilike('category', `%${formattedCategory}%`);
 
                 if (error) throw error;
                 setDesigns(data || []);
@@ -48,7 +48,7 @@ const CategoryPage = () => {
     return (
         <div className="flex flex-col min-h-screen bg-white">
             <UserNavbar />
-            
+
             <main className="flex-grow py-16 px-6 md:px-20">
                 <header className="mb-12 text-center">
                     <h2 className="text-4xl font-extrabold text-gray-900 capitalize tracking-tight">
@@ -64,25 +64,36 @@ const CategoryPage = () => {
                 ) : designs.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
                         {designs.map((product) => (
-                            <div 
-                                key={product.id} 
+                            <div
+                                key={product.id}
                                 className="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 flex flex-col"
                             >
                                 <div className="aspect-[4/5] overflow-hidden bg-gray-50 relative">
-                                    <img 
-                                        src={product.image_url} 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                                        alt={product.name} 
+                                    <img
+                                        src={product.image_url}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        alt={product.name}
                                     />
-                                    
+
                                     <div className="hidden md:flex absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <button 
-                                            onClick={() => addToCart(product)}
+                                        <button
+                                            onClick={() => addToCart({
+                                                id: product.id,
+                                                name: product.name,
+                                                price: product.price || 600,
+                                                quantity: 1,
+                                                image: product.image_url,
+                                                userDesign1: product.image_url,
+                                                userDesign2: '',
+                                                userDesign3: '',
+                                                userDesign4: '',
+                                                isEdited: false,
+                                            })}
                                             className="bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-50 active:scale-95"
                                         >
                                             Add to cart
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleEditPage(product.id)}
                                             className='bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-50 active:scale-95'
                                         >
@@ -95,7 +106,7 @@ const CategoryPage = () => {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="p-6 flex flex-col flex-grow">
                                     <div className="flex justify-between items-start">
                                         <div>
@@ -111,15 +122,15 @@ const CategoryPage = () => {
                                         </button>
                                     </div>
 
-                                
+
                                     <div className="mt-4 flex flex-col gap-2 md:hidden">
-                                        <button 
+                                        <button
                                             onClick={() => addToCart(product)}
                                             className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-xl active:scale-95"
                                         >
                                             Add to Cart
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleEditPage(product.id)}
                                             className="w-full border border-gray-200 text-gray-700 text-sm font-bold py-2.5 rounded-xl active:scale-95"
                                         >

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart, Edit3, Lock } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Edit3, Loader2 } from 'lucide-react';
 import { Stage, Layer, Rect, Image } from 'react-konva';
 import useImage from 'use-image';
 import EditableText from '../../canvas/EditableText';
@@ -8,7 +8,6 @@ import CanvasVideo from '../../canvas/CanvasVideo';
 import CanvasAudioPlayer from '../../canvas/CanvasAudioPlayer';
 import URLImage from '../../canvas/URLImage';
 import { useCart } from '../../context/CartContext';
-
 
 const Logo = ({ canvasBaseSize }) => {
     const [image] = useImage('/assets/logo.png');
@@ -30,115 +29,17 @@ const CardPreview = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { allSlides, orientation, designName, id, isTemplate } = location.state || {};
+
     const [currentPage, setCurrentPage] = useState(1);
     const { addToCart } = useCart();
     const [isPlaying, setIsPlaying] = useState(false);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [isCapturing, setIsCapturing] = useState(false);
 
     const stageRef1 = useRef(null);
     const stageRef2 = useRef(null);
-    const stageRef3Inside = useRef(null);
     const stageRef3 = useRef(null);
-
-    const handleCart = async () => {
-        try {
-            const originalPage = currentPage;
-            const snapshots = {};
-
-            if (isTemplate || !allSlides) {
-                console.log("Adding template to cart - using default images");
-
-                const templateItem = {
-                    id: id || `template-${Date.now()}`,
-                    name: designName || 'Greeting Cards',
-                    price: 600,
-                    quantity: 1,
-                    image: '/default-card-front.png',
-                    userDesign1: '/default-card-front.png',
-                    userDesign2: '/default-card-inside.png',
-                    userDesign3: '/default-card-inside.png',
-                    userDesign4: '/default-card-back.png',
-                    designData: allSlides || [],
-                    isTemplate: true
-                };
-
-                console.log("Adding template to cart:", templateItem);
-                addToCart(templateItem, false);
-                navigate('/cart');
-                return;
-            }
-
-            console.log("Capturing edited design images");
-
-        
-            setCurrentPage(1);
-            await new Promise(resolve => setTimeout(resolve, 600));
-            if (stageRef1.current) {
-                snapshots.userDesign1 = stageRef1.current.toDataURL({
-                    pixelRatio: 2,
-                    mimeType: 'image/jpeg',
-                    quality: 0.8
-                });
-            }
-
-            
-            setCurrentPage(2);
-            await new Promise(resolve => setTimeout(resolve, 600));
-
-            if (stageRef2.current) {
-                snapshots.userDesign2 = stageRef2.current.toDataURL({
-                    pixelRatio: 2,
-                    mimeType: 'image/jpeg',
-                    quality: 0.8
-                });
-            }
-
-            
-            if (stageRef3Inside.current) {
-                snapshots.userDesign3 = stageRef3Inside.current.toDataURL({
-                    pixelRatio: 2,
-                    mimeType: 'image/jpeg',
-                    quality: 0.8
-                });
-            }
-
-           
-            setCurrentPage(3);
-            await new Promise(resolve => setTimeout(resolve, 600));
-            if (stageRef3.current) {
-                snapshots.userDesign4 = stageRef3.current.toDataURL({
-                    pixelRatio: 2,
-                    mimeType: 'image/jpeg',
-                    quality: 0.8
-                });
-            }
-
-            setCurrentPage(originalPage);
-
-           
-            const cartItem = {
-                id: id || `design-${Date.now()}`,
-                name: designName || 'Custom Greeting Card',
-                price: 600,
-                quantity: 1,
-                image: snapshots.userDesign1,
-                userDesign1: snapshots.userDesign1,
-                userDesign2: snapshots.userDesign2,
-                userDesign3: snapshots.userDesign3,
-                userDesign4: snapshots.userDesign4 || snapshots.userDesign1,
-                designData: allSlides,
-                isEdited: true
-            };
-
-            console.log("Adding edited design to cart:", cartItem);
-            addToCart(cartItem, false);
-            navigate('/cart');
-
-        } catch (err) {
-            console.error("Error:", err);
-            alert("Failed to add to cart. Please try again.");
-        }
-    };
+    const stageRef4 = useRef(null);
 
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
@@ -146,127 +47,211 @@ const CardPreview = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    if (!allSlides && !isTemplate) return null;
+    if (!allSlides && !isTemplate) return <div className="p-10 text-center">No design data found.</div>;
 
     const isMobile = windowWidth < 768;
     const canvasBaseSize = orientation === 'portrait' ? { width: 400, height: 550 } : { width: 700, height: 450 };
-    let previewWidth = isMobile ? windowWidth - 48 : (orientation === 'portrait' ? 400 : 550);
-    if (currentPage === 2 && !isMobile) previewWidth = orientation === 'portrait' ? 740 : 900;
-    const scale = previewWidth / (currentPage === 2 && !isMobile ? canvasBaseSize.width * 2 : canvasBaseSize.width);
-    const previewSize = { width: previewWidth, height: canvasBaseSize.height * scale };
 
-    const RenderSlide = ({ slideNum, isSpreadMember = false, stageRef }) => {
+    const previewWidth = isMobile ? windowWidth - 48 : (orientation === 'portrait' ? 400 : 550);
+    const insideWidth = isMobile ? windowWidth - 48 : (orientation === 'portrait' ? 800 : 900);
+    const scale = previewWidth / canvasBaseSize.width;
+    const insideScale = insideWidth / (canvasBaseSize.width * 2);
+    const previewSize = { width: previewWidth, height: canvasBaseSize.height * scale };
+    const insideSize = { width: insideWidth, height: canvasBaseSize.height * insideScale };
+
+    const handleEdit = () => {
+        navigate(`/design-editor/${id}`, {
+            state: {
+                fromPreview: true,
+                slidesData: allSlides,
+                orientation,
+                designName,
+            }
+        });
+    };
+const handleCart = async () => {
+    if (isCapturing) return;
+    setIsCapturing(true);
+
+    try {
+        await new Promise(r => setTimeout(r, 1500));
+
+        
+        console.log("=== ALL SLIDES DEBUG ===");
+        console.log("Slide 1 elements:", allSlides?.[1]?.elements?.length);
+        console.log("Slide 2 elements:", allSlides?.[2]?.elements?.length);
+        console.log("Slide 3 elements:", allSlides?.[3]?.elements?.length);
+        console.log("Slide 4 elements:", allSlides?.[4]?.elements?.length);
+
+        console.log("stageRef1:", stageRef1.current ? "MOUNTED" : "NULL");
+        console.log("stageRef2:", stageRef2.current ? "MOUNTED" : "NULL");
+        console.log("stageRef3:", stageRef3.current ? "MOUNTED" : "NULL");
+        console.log("stageRef4:", stageRef4.current ? "MOUNTED" : "NULL");
+
+        const design1 = stageRef1.current?.toDataURL({ pixelRatio: 2 }) || '';
+        const design2 = stageRef2.current?.toDataURL({ pixelRatio: 2 }) || '';
+        const design3 = stageRef3.current?.toDataURL({ pixelRatio: 2 }) || '';
+        const design4 = stageRef4.current?.toDataURL({ pixelRatio: 2 }) || '';
+
+        console.log("design1 length:", design1.length);
+        console.log("design2 length:", design2.length);
+        console.log("design3 length:", design3.length);
+        console.log("design4 length:", design4.length);
+
+        const hasUserEdited = (
+            (allSlides?.[2]?.elements?.length > 0) ||
+            (allSlides?.[3]?.elements?.length > 0)
+        );
+        console.log("hasUserEdited:", hasUserEdited);
+
+        if (!design1) throw new Error("Front page capture failed");
+
+        const cartItem = {
+            id: id || `custom-${Date.now()}`,
+            name: designName || 'Custom Card',
+            price: 600,
+            quantity: 1,
+            image: design1,
+            userDesign1: design1,
+            userDesign2: hasUserEdited ? design2 : '',
+            userDesign3: hasUserEdited ? design3 : '',
+            userDesign4: design4,
+            isEdited: hasUserEdited,
+        };
+
+        console.log("cartItem isEdited:", cartItem.isEdited);
+        console.log("cartItem userDesign2 length:", cartItem.userDesign2.length);
+        console.log("cartItem userDesign3 length:", cartItem.userDesign3.length);
+        console.log("cartItem userDesign4 length:", cartItem.userDesign4.length);
+
+        addToCart(cartItem, false);
+        navigate('/cart');
+
+    } catch (err) {
+        console.error("Cart Error:", err);
+        alert("Error capturing designs. Please try again.");
+    } finally {
+        setIsCapturing(false);
+    }
+};
+
+    const RenderSlideElements = ({ slideNum }) => {
         const slide = allSlides?.[slideNum];
         if (!slide) return null;
-
-        const elements = slide.elements || [];
-        const bgColor = slide.bg || '#ffffff';
-        const stageWidth = isSpreadMember && !isMobile ? previewSize.width / 2 : previewSize.width;
-
         return (
-            <div
-                className="relative overflow-hidden transition-all duration-700 ease-in-out shadow-sm"
-                style={{ backgroundColor: bgColor, width: stageWidth, height: previewSize.height }}
-            >
-                <Stage
-                    ref={stageRef}
-                    width={stageWidth}
-                    height={previewSize.height}
-                    scaleX={scale}
-                    scaleY={scale}
-                >
-                    <Layer>
-                        <Rect x={0} y={0} width={canvasBaseSize.width} height={canvasBaseSize.height} fill={bgColor} listening={false} />
-                        {elements.map((el) => {
-                            if (!el) return null;
-                            const commonProps = { el, isSelected: false, onChange: () => { }, draggable: false };
-                            if (el.type === 'text') return <EditableText key={el.id} {...commonProps} />;
-                            if (el.type === 'image' || el.type === 'qrcode' || (el.src && !el.src.endsWith('.mp3') && !el.src.endsWith('.mp4'))) {
-                                return <URLImage key={el.id} {...commonProps} />;
-                            }
-                            if (el.type === 'video' || (el.src && el.src.endsWith('.mp4'))) return <CanvasVideo key={el.id} {...commonProps} />;
-                            if (el.type === 'audio' || (el.src && el.src.endsWith('.mp3'))) {
-                                return <CanvasAudioPlayer key={el.id} {...commonProps} audioData={el} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} />;
-                            }
-                            return null;
-                        })}
-                        
-                        {slideNum === 4 && !elements.some(el => el.isLogo) && <Logo canvasBaseSize={canvasBaseSize} />}
-                    </Layer>
-                </Stage>
-            </div>
+            <Layer>
+                <Rect x={0} y={0} width={canvasBaseSize.width} height={canvasBaseSize.height} fill={slide.bg || '#ffffff'} />
+                {(slide.elements || []).map((el) => {
+                    if (!el) return null;
+                    const props = { el, isSelected: false, onChange: () => { }, draggable: false };
+                    if (el.type === 'text') return <EditableText key={el.id} {...props} />;
+                    if (el.type === 'image' || el.type === 'qrcode' || (el.src && !el.src.endsWith('.mp3') && !el.src.endsWith('.mp4'))) {
+                        return <URLImage key={el.id} {...props} />;
+                    }
+                    if (el.type === 'video' || el.src?.endsWith('.mp4')) return <CanvasVideo key={el.id} {...props} />;
+                    if (el.type === 'audio' || el.src?.endsWith('.mp3')) {
+                        return <CanvasAudioPlayer key={el.id} {...props} audioData={el} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} />;
+                    }
+                    return null;
+                })}
+            </Layer>
         );
     };
 
     return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center py-4 font-sans overflow-x-hidden">
-            <div className="w-full max-w-6xl flex flex-col justify-between items-center mb-4 px-4 gap-4 shrink-0">
-                <div className="flex items-center justify-between w-full gap-4">
-                    <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-600 font-medium hover:text-gray-900">
-                        <ArrowLeft size={18} /> Back
-                    </button>
-                    <h1 className="text-base md:text-xl font-bold text-gray-800 truncate">
-                        {designName || 'Card Preview'}
-                    </h1>
-                    <div className="w-10 md:hidden"></div>
+        <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center py-4 relative overflow-x-hidden">
+            {isCapturing && (
+                <div className="fixed inset-0 bg-white/90 backdrop-blur-md z-[100] flex flex-col items-center justify-center">
+                    <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                    <p className="text-lg font-bold">Capturing all pages...</p>
                 </div>
+            )}
 
-                <div className="flex gap-2 w-full md:w-auto">
+            <div className="w-full max-w-6xl flex justify-between px-4 mb-4">
+                <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-600">
+                    <ArrowLeft size={18} /> Back
+                </button>
+                <div className="flex gap-2">
                     <button
-                        onClick={() => navigate(`/design-editor/${id}`, {
-                            state: {
-                                fromPreview: true,
-                                slidesData: allSlides,
-                                orientation: orientation,
-                                designName: designName
-                            }
-                        })}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        onClick={handleEdit}
+                        className="bg-gray-100 text-gray-700 px-5 py-2 rounded-xl font-bold flex items-center gap-2 border hover:bg-gray-200"
                     >
-                        <Edit3 size={16} /> Edit
+                        <Edit3 size={18} /> Edit
                     </button>
                     <button
                         onClick={handleCart}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all"
+                        disabled={isCapturing}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 disabled:opacity-60"
                     >
-                        <ShoppingCart size={16} /> Add to Cart
+                        <ShoppingCart size={18} /> Add to Cart
                     </button>
                 </div>
             </div>
 
-      
-            <div className="flex-1 flex items-center justify-center w-full px-4 overflow-y-auto">
-                <div className="bg-white p-1.5 md:p-4 rounded-2xl shadow-xl transition-all duration-500 transform scale-100">
-                    <div className="flex justify-center items-center overflow-hidden rounded-xl border border-gray-100">
-                        <div key={currentPage} className="animate-in fade-in slide-in-from-right-4 duration-500">
-                            {currentPage === 1 && <RenderSlide slideNum={1} stageRef={stageRef1} />}
-                            {currentPage === 2 && (
-                                <div className={`flex ${isMobile ? 'flex-col gap-2' : 'flex-row'}`}>
-                                    <RenderSlide slideNum={2} isSpreadMember={true} stageRef={stageRef2} />
-                                    <RenderSlide slideNum={3} isSpreadMember={true} stageRef={stageRef3Inside} />
-                                </div>
-                            )}
-                            {currentPage === 3 && <RenderSlide slideNum={4} stageRef={stageRef3} />}
-                        </div>
+            <div className="flex-1 flex items-center justify-center w-full">
+                <div className="bg-white p-4 rounded-2xl shadow-2xl">
+
+                    <div style={{ display: currentPage === 1 ? 'block' : 'none' }}>
+                        <Stage
+                            width={previewSize.width}
+                            height={previewSize.height}
+                            scaleX={scale}
+                            scaleY={scale}
+                            ref={stageRef1}
+                        >
+                            <RenderSlideElements slideNum={1} />
+                        </Stage>
                     </div>
+
+                
+                    <div
+                        style={{ display: currentPage === 2 ? 'flex' : 'none' }}
+                        className={isMobile ? 'flex-col gap-4' : 'flex-row gap-0 border-x'}
+                    >
+                        <Stage
+                            width={isMobile ? previewSize.width : insideSize.width / 2}
+                            height={isMobile ? previewSize.height : insideSize.height}
+                            scaleX={isMobile ? scale : insideScale}
+                            scaleY={isMobile ? scale : insideScale}
+                            ref={stageRef2}
+                        >
+                            <RenderSlideElements slideNum={2} />
+                        </Stage>
+                        <Stage
+                            width={isMobile ? previewSize.width : insideSize.width / 2}
+                            height={isMobile ? previewSize.height : insideSize.height}
+                            scaleX={isMobile ? scale : insideScale}
+                            scaleY={isMobile ? scale : insideScale}
+                            ref={stageRef3}
+                        >
+                            <RenderSlideElements slideNum={3} />
+                        </Stage>
+                    </div>
+
+                    
+                    <div style={{ display: currentPage === 3 ? 'block' : 'none' }}>
+                        <Stage
+                            width={previewSize.width}
+                            height={previewSize.height}
+                            scaleX={scale}
+                            scaleY={scale}
+                            ref={stageRef4}
+                        >
+                            <RenderSlideElements slideNum={4} />
+                        </Stage>
+                    </div>
+
                 </div>
             </div>
 
-          
-            <div className="sticky bottom-4 mt-6 flex justify-center gap-1.5 md:gap-3 bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-white/50 mx-4 shrink-0 z-50">
-                {[
-                    { id: 1, label: 'Front', icon: <Lock size={12} /> },
-                    { id: 2, label: 'Inside', icon: null },
-                    { id: 3, label: 'Back', icon: <Lock size={12} /> }
-                ].map((btn) => (
+            <div className="fixed bottom-6 flex gap-4 bg-white p-2 rounded-2xl shadow-lg border">
+                {[1, 2, 3].map(num => (
                     <button
-                        key={btn.id}
-                        onClick={() => setCurrentPage(btn.id)}
-                        className={`px-5 md:px-8 py-2.5 md:py-3 rounded-xl font-bold text-[11px] md:text-sm transition-all flex items-center gap-2 ${
-                            currentPage === btn.id ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'
-                        }`}
+                        key={num}
+                        onClick={() => setCurrentPage(num)}
+                        className={`px-6 py-2 rounded-xl font-bold ${currentPage === num ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
                     >
-                        {btn.icon} {btn.label}
+                        {num === 1 ? 'Front' : num === 2 ? 'Inside' : 'Back'}
                     </button>
                 ))}
             </div>

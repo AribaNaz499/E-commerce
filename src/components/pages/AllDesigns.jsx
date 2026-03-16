@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import UserNavbar from '../../components/pages/UserNavbar';
 import UserFooter from '../../components/pages/UserFooter';
 import { supabase } from "../../config/supabaseClient";
-import { useCart } from '../../context/CartContext'; 
+import { useCart } from '../../context/CartContext';
 
 const AllDesigns = () => {
     const [designs, setDesigns] = useState([]);
@@ -34,8 +34,8 @@ const AllDesigns = () => {
     }, []);
 
     const handleEditPage = (id) => {
-        navigate(`/design-editor/${id}`, { 
-            state: { fromPreview: false } 
+        navigate(`/design-editor/${id}`, {
+            state: { fromPreview: false }
         });
     };
 
@@ -77,14 +77,25 @@ const AllDesigns = () => {
                                     />
 
                                     <div className="hidden md:flex absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    
-                                        <button 
-                                            onClick={() => addToCart(product)} 
+
+                                        <button
+                                            onClick={() => addToCart({
+                                                id: product.id,
+                                                name: product.name,
+                                                price: product.price || 600,
+                                                quantity: 1,
+                                                image: product.image_url,
+                                                userDesign1: product.image_url,
+                                                userDesign2: '',
+                                                userDesign3: '',
+                                                userDesign4: '',
+                                                isEdited: false,
+                                            })}
                                             className="bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-50 active:scale-95"
                                         >
                                             Add to cart
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleEditPage(product.id)}
                                             className='bg-white text-rose-950 font-bold px-8 py-3 rounded-full mb-4 transition-transform hover:bg-rose-50 active:scale-95'
                                         >
@@ -112,14 +123,14 @@ const AllDesigns = () => {
                                     </div>
 
                                     <div className="mt-4 flex flex-col gap-2 md:hidden">
-                                        <button 
+                                        <button
                                             onClick={() => addToCart(product)}
                                             className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-transform"
                                         >
                                             Add to Cart
                                         </button>
-                                        <button 
-                                            onClick={() => handleEditPage(product.id)} 
+                                        <button
+                                            onClick={() => handleEditPage(product.id)}
                                             className="w-full border border-gray-200 text-gray-700 text-sm font-bold py-2.5 rounded-xl active:scale-95 transition-transform"
                                         >
                                             Edit Design
