@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../config/supabaseClient";
 import { CanvasContext } from "../../context/CanvasContext";
+import { useCart } from "../../context/CartContext";
 import CanvasArea from "../../components/editor/CanvasArea";
 import ToolPanel from "../../components/editor/ToolPanel";
 import LayerPanel from "../../components/editor/LayerPannel";
@@ -12,6 +13,7 @@ const UserEditDesign = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const context = useContext(CanvasContext);
+  const { addToCart } = useCart(); 
   const LogoImg = "/assets/logo.png";
 
   if (!context)
@@ -30,6 +32,8 @@ const UserEditDesign = () => {
   const [currentSlide, setCurrentSlide] = useState(1);
   const [designName, setDesignName] = useState("");
   const [scale, setScale] = useState(1);
+  const [productPrice, setProductPrice] = useState(600); 
+  const [productImage, setProductImage] = useState(""); 
   const [slidesData, setSlidesData] = useState({
     1: { elements: [], bg: "#ffffff" },
     2: { elements: [], bg: "#ffffff" },
@@ -38,7 +42,6 @@ const UserEditDesign = () => {
   });
 
   const isLockedSlide = currentSlide === 1 || currentSlide === 4;
-
 
   useEffect(() => {
     if (isLockedSlide) {
@@ -71,7 +74,6 @@ const UserEditDesign = () => {
     return slides;
   };
 
-
   const loadSlideFromDatabase = async (slideNum) => {
     try {
       const designId = parseInt(id);
@@ -88,7 +90,6 @@ const UserEditDesign = () => {
       return null;
     }
   };
-
 
   const saveSlideToDatabase = async (slideNum, slideElements, slideBg) => {
     if (fetching) return;
@@ -116,7 +117,6 @@ const UserEditDesign = () => {
 
     setTimeout(() => {
       try {
-
         const updatedSlides = {
           ...slidesData,
           [currentSlide]: {
@@ -131,7 +131,9 @@ const UserEditDesign = () => {
             allSlides: updatedSlides,
             orientation,
             designName,
-            id
+            id,
+            price: productPrice, 
+            image: productImage
           }
         });
       } catch (error) {
@@ -140,6 +142,40 @@ const UserEditDesign = () => {
     }, 150);
   };
 
+  const handleAddToCart = async () => {
+    try {
+      let canvasImage = null;
+      if (stageRef?.current) {
+        canvasImage = stageRef.current.toDataURL();
+      }
+
+      const cartItem = {
+        id: `${id}-edited-${Date.now()}`, // Unique ID for edited item
+        name: designName || "Custom Design",
+        price: productPrice, 
+        quantity: 1,
+        image: canvasImage || productImage,
+        userDesign1: canvasImage || productImage,
+        userDesign2: '',
+        userDesign3: '',
+        userDesign4: '',
+        isEdited: true,
+        designData: {
+          slides: slidesData,
+          orientation: orientation,
+          currentSlide: currentSlide
+        }
+      };
+
+      addToCart(cartItem);
+      
+      navigate('/cart');
+      
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      alert("Failed to add design to cart");
+    }
+  };
 
   useEffect(() => {
     const loadDesign = async () => {
@@ -151,6 +187,8 @@ const UserEditDesign = () => {
           const detectedOrientation = location.state.orientation || orientation;
           setOrientation(detectedOrientation);
           setDesignName(location.state.designName || "Untitled");
+          setProductPrice(location.state.price || 600); 
+          setProductImage(location.state.image || "");
           setSlidesData(previewSlides);
           setElements([...previewSlides[1].elements]);
           setCanvasBg(previewSlides[1].bg);
@@ -165,6 +203,9 @@ const UserEditDesign = () => {
           .eq("id", id)
           .single();
         if (productError) throw productError;
+
+        setProductPrice(parseFloat(product.price) || 600);
+        setProductImage(product.image_url || "");
 
         let detectedOrientation = "portrait";
         if (product.orientation === "landscape" || product.orientation === "portrait") {
@@ -198,7 +239,6 @@ const UserEditDesign = () => {
     loadDesign();
   }, [id, location.state?.fromPreview, location.state?.slidesData]);
 
-  
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
@@ -212,7 +252,6 @@ const UserEditDesign = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [orientation, isToolPanelOpen, fetching]);
-
 
   useEffect(() => {
     if (!fetching && !isLockedSlide && elements) {
@@ -240,7 +279,6 @@ const UserEditDesign = () => {
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden fixed inset-0 select-none">
 
-
       <nav className="h-14 sm:h-16 bg-white border-b px-2 sm:px-4 flex items-center justify-between z-[100] shrink-0 shadow-sm">
         <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-blue-600 p-2">
           <ArrowLeft size={20} />
@@ -261,15 +299,12 @@ const UserEditDesign = () => {
           ))}
         </div>
 
-
         <button onClick={handlePreview} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] sm:text-xs uppercase">
           Preview
         </button>
       </nav>
 
-
       <div className="flex-1 flex overflow-hidden">
-
 
         <aside className="w-20 bg-white border-r flex flex-col items-center py-4 space-y-4">
           <SidebarBtn icon={<ImageIcon />} onClick={() => { setActiveTool("image"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
@@ -278,20 +313,17 @@ const UserEditDesign = () => {
           <SidebarBtn icon={<Layout />} onClick={() => { setActiveTool("layout"); setIsToolPanelOpen(true); }} disabled={isLockedSlide} />
         </aside>
 
-
         <main className="flex-1 flex items-center justify-center bg-[#F1F5F9] p-4 relative">
           <div style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}
             className="shadow-2xl bg-white ring-1 ring-black/5">
             <CanvasArea key={`canvas-${currentSlide}`} elements={elements} orientation={orientation} isLocked={isLockedSlide} />
           </div>
 
-
           {isToolPanelOpen && !isLockedSlide && (
             <div className="absolute right-0 top-0 h-full w-80 bg-white shadow-lg z-50">
               <ToolPanel />
             </div>
           )}
-
 
           {elements.length > 0 && !isLockedSlide && (
             <div className="absolute left-0 bottom-0 w-full md:w-auto md:right-0 md:top-auto md:bottom-0 flex justify-center z-50">

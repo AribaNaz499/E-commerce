@@ -28,7 +28,7 @@ const Logo = ({ canvasBaseSize }) => {
 const CardPreview = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { allSlides, orientation, designName, id, isTemplate } = location.state || {};
+    const { allSlides, orientation, designName, id, price, image } = location.state || {};
 
     const [currentPage, setCurrentPage] = useState(1);
     const { addToCart } = useCart();
@@ -47,10 +47,10 @@ const CardPreview = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    if (!allSlides && !isTemplate) return <div className="p-10 text-center">No design data found.</div>;
+    if (!allSlides) return <div className="p-10 text-center">No design data found.</div>;
 
     const isMobile = windowWidth < 768;
-    const canvasBaseSize = orientation === 'portrait' ? { width: 400, height: 550 } : { width: 700, height: 450 };
+    const canvasBaseSize = orientation === 'portrait' ? { width: 400, height: 480 } : { width: 700, height: 450 };
 
     const previewWidth = isMobile ? windowWidth - 48 : (orientation === 'portrait' ? 400 : 550);
     const insideWidth = isMobile ? windowWidth - 48 : (orientation === 'portrait' ? 800 : 900);
@@ -66,74 +66,56 @@ const CardPreview = () => {
                 slidesData: allSlides,
                 orientation,
                 designName,
+                price, 
+                image
             }
         });
     };
-const handleCart = async () => {
-    if (isCapturing) return;
-    setIsCapturing(true);
 
-    try {
-        await new Promise(r => setTimeout(r, 1500));
+    const handleCart = async () => {
+        if (isCapturing) return;
+        setIsCapturing(true);
 
-        
-        console.log("=== ALL SLIDES DEBUG ===");
-        console.log("Slide 1 elements:", allSlides?.[1]?.elements?.length);
-        console.log("Slide 2 elements:", allSlides?.[2]?.elements?.length);
-        console.log("Slide 3 elements:", allSlides?.[3]?.elements?.length);
-        console.log("Slide 4 elements:", allSlides?.[4]?.elements?.length);
+        try {
+            await new Promise(r => setTimeout(r, 1500));
 
-        console.log("stageRef1:", stageRef1.current ? "MOUNTED" : "NULL");
-        console.log("stageRef2:", stageRef2.current ? "MOUNTED" : "NULL");
-        console.log("stageRef3:", stageRef3.current ? "MOUNTED" : "NULL");
-        console.log("stageRef4:", stageRef4.current ? "MOUNTED" : "NULL");
+            const design1 = stageRef1.current?.toDataURL({ pixelRatio: 2 }) || '';
+            const design2 = stageRef2.current?.toDataURL({ pixelRatio: 2 }) || '';
+            const design3 = stageRef3.current?.toDataURL({ pixelRatio: 2 }) || '';
+            const design4 = stageRef4.current?.toDataURL({ pixelRatio: 2 }) || '';
 
-        const design1 = stageRef1.current?.toDataURL({ pixelRatio: 2 }) || '';
-        const design2 = stageRef2.current?.toDataURL({ pixelRatio: 2 }) || '';
-        const design3 = stageRef3.current?.toDataURL({ pixelRatio: 2 }) || '';
-        const design4 = stageRef4.current?.toDataURL({ pixelRatio: 2 }) || '';
+            const hasUserEdited = (
+                (allSlides?.[2]?.elements?.length > 0) ||
+                (allSlides?.[3]?.elements?.length > 0)
+            );
 
-        console.log("design1 length:", design1.length);
-        console.log("design2 length:", design2.length);
-        console.log("design3 length:", design3.length);
-        console.log("design4 length:", design4.length);
+            if (!design1) throw new Error("Front page capture failed");
 
-        const hasUserEdited = (
-            (allSlides?.[2]?.elements?.length > 0) ||
-            (allSlides?.[3]?.elements?.length > 0)
-        );
-        console.log("hasUserEdited:", hasUserEdited);
+            const cartItem = {
+                id: id || `custom-${Date.now()}`,
+                name: designName || 'Custom Card',
+                price: parseFloat(price),
+                quantity: 1,
+                image: design1,
+                userDesign1: design1,
+                userDesign2: hasUserEdited ? design2 : '',
+                userDesign3: hasUserEdited ? design3 : '',
+                userDesign4: design4,
+                isEdited: hasUserEdited,
+            };
 
-        if (!design1) throw new Error("Front page capture failed");
+            console.log("Adding to cart with price:", cartItem.price); 
 
-        const cartItem = {
-            id: id || `custom-${Date.now()}`,
-            name: designName || 'Custom Card',
-            price: 600,
-            quantity: 1,
-            image: design1,
-            userDesign1: design1,
-            userDesign2: hasUserEdited ? design2 : '',
-            userDesign3: hasUserEdited ? design3 : '',
-            userDesign4: design4,
-            isEdited: hasUserEdited,
-        };
+            addToCart(cartItem, false);
+            navigate('/cart');
 
-        console.log("cartItem isEdited:", cartItem.isEdited);
-        console.log("cartItem userDesign2 length:", cartItem.userDesign2.length);
-        console.log("cartItem userDesign3 length:", cartItem.userDesign3.length);
-        console.log("cartItem userDesign4 length:", cartItem.userDesign4.length);
-
-        addToCart(cartItem, false);
-        navigate('/cart');
-
-    } catch (err) {
-        console.error("Cart Error:", err);
-        alert("Error capturing designs. Please try again.");
-    } finally {
-        setIsCapturing(false);
-    }
-};
+        } catch (err) {
+            console.error("Cart Error:", err);
+            alert("Error capturing designs. Please try again.");
+        } finally {
+            setIsCapturing(false);
+        }
+    };
 
     const RenderSlideElements = ({ slideNum }) => {
         const slide = allSlides?.[slideNum];
@@ -171,26 +153,51 @@ const handleCart = async () => {
                 <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-600">
                     <ArrowLeft size={18} /> Back
                 </button>
-                <div className="flex gap-2">
-                    <button
-                        onClick={handleEdit}
-                        className="bg-gray-100 text-gray-700 px-5 py-2 rounded-xl font-bold flex items-center gap-2 border hover:bg-gray-200"
-                    >
-                        <Edit3 size={18} /> Edit
-                    </button>
-                    <button
-                        onClick={handleCart}
-                        disabled={isCapturing}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 disabled:opacity-60"
-                    >
-                        <ShoppingCart size={18} /> Add to Cart
-                    </button>
-                </div>
+                
+                {price && (
+                    <div className="flex items-center gap-4">
+                        <div className="text-lg font-bold text-blue-600">
+                            ${parseFloat(price).toFixed(2)}
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleEdit}
+                                className="bg-gray-100 text-gray-700 px-5 py-2 rounded-xl font-bold flex items-center gap-2 border hover:bg-gray-200"
+                            >
+                                <Edit3 size={18} /> Edit
+                            </button>
+                            <button
+                                onClick={handleCart}
+                                disabled={isCapturing}
+                                className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 disabled:opacity-60"
+                            >
+                                <ShoppingCart size={18} /> Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {!price && (
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleEdit}
+                            className="bg-gray-100 text-gray-700 px-5 py-2 rounded-xl font-bold flex items-center gap-2 border hover:bg-gray-200"
+                        >
+                            <Edit3 size={18} /> Edit
+                        </button>
+                        <button
+                            onClick={handleCart}
+                            disabled={isCapturing}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 disabled:opacity-60"
+                        >
+                            <ShoppingCart size={18} /> Add to Cart
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 flex items-center justify-center w-full">
                 <div className="bg-white p-4 rounded-2xl shadow-2xl">
-
                     <div style={{ display: currentPage === 1 ? 'block' : 'none' }}>
                         <Stage
                             width={previewSize.width}
@@ -203,31 +210,45 @@ const handleCart = async () => {
                         </Stage>
                     </div>
 
-                
                     <div
                         style={{ display: currentPage === 2 ? 'flex' : 'none' }}
-                        className={isMobile ? 'flex-col gap-4' : 'flex-row gap-0 border-x'}
+                        className={`${isMobile ? 'flex-col gap-6' : 'flex-row gap-0 items-start justify-center'}`}
                     >
-                        <Stage
-                            width={isMobile ? previewSize.width : insideSize.width / 2}
-                            height={isMobile ? previewSize.height : insideSize.height}
-                            scaleX={isMobile ? scale : insideScale}
-                            scaleY={isMobile ? scale : insideScale}
-                            ref={stageRef2}
-                        >
-                            <RenderSlideElements slideNum={2} />
-                        </Stage>
-                        <Stage
-                            width={isMobile ? previewSize.width : insideSize.width / 2}
-                            height={isMobile ? previewSize.height : insideSize.height}
-                            scaleX={isMobile ? scale : insideScale}
-                            scaleY={isMobile ? scale : insideScale}
-                            ref={stageRef3}
-                        >
-                            <RenderSlideElements slideNum={3} />
-                        </Stage>
-                    </div>
+                        <div className="relative">
+                            <Stage
+                                width={isMobile ? previewSize.width : insideSize.width / 2}
+                                height={isMobile ? previewSize.height : insideSize.height}
+                                scaleX={isMobile ? scale : insideScale}
+                                scaleY={isMobile ? scale : insideScale}
+                                ref={stageRef2}
+                            >
+                                <RenderSlideElements slideNum={2} />
+                            </Stage>
+                        </div>
 
+                        {!isMobile && (
+                            <div
+                                style={{
+                                    width: '1px',
+                                    height: insideSize.height,
+                                    backgroundColor: '#727272',
+                                    alignSelf: 'start'
+                                }}
+                            />
+                        )}
+
+                        <div className="relative">
+                            <Stage
+                                width={isMobile ? previewSize.width : insideSize.width / 2}
+                                height={isMobile ? previewSize.height : insideSize.height}
+                                scaleX={isMobile ? scale : insideScale}
+                                scaleY={isMobile ? scale : insideScale}
+                                ref={stageRef3}
+                            >
+                                <RenderSlideElements slideNum={3} />
+                            </Stage>
+                        </div>
+                    </div>
                     
                     <div style={{ display: currentPage === 3 ? 'block' : 'none' }}>
                         <Stage
@@ -240,7 +261,6 @@ const handleCart = async () => {
                             <RenderSlideElements slideNum={4} />
                         </Stage>
                     </div>
-
                 </div>
             </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronRight, Trash2, Minus, Plus } from 'lucide-react';
 import UserFooter from './UserFooter';
 import UserNavbar from './UserNavbar';
@@ -9,11 +9,11 @@ const AddToCart = () => {
     const { cartItems, updateQuantity, removeFromCart } = useCart();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
-    const shippingCost = 200;
+    const shippingCost = 2.00;
 
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', phone: '',
-        countryCode: 'PAK', city: '', state: '', zipCode: '', address: '',
+        countryCode: 'PAK', city: '', state: '', zipCode: '', address: '', description: '',
     });
 
     const handleInputChange = (e) => {
@@ -21,20 +21,53 @@ const AddToCart = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    useEffect(() => {
+        console.log('Cart items in AddToCart:', cartItems.map(item => ({
+            name: item.name,
+            price: item.price,
+            priceType: typeof item.price,
+            quantity: item.quantity
+        })));
+    }, [cartItems]);
+
     const calculatedSubtotal = useMemo(() => {
         return cartItems.reduce((acc, item) => {
-            const price = parseFloat(item.price) || 0;
+            // Multiple fallbacks for price
+            let price = 0;
+            
+            if (item.price !== undefined && item.price !== null) {
+                price = parseFloat(item.price);
+            } else if (item.product_price) {
+                price = parseFloat(item.product_price);
+            } else if (item.amount) {
+                price = parseFloat(item.amount);
+            } else {
+                price = 0;
+            }
+            
+            if (isNaN(price) || price === 0) {
+                if (item.product_details?.price) {
+                    price = parseFloat(item.product_details.price);
+                }
+            }
+          
+            if (isNaN(price) || price === 0) {
+                price = 600; 
+            }
+            
             const qty = parseInt(item.quantity) || 1;
-            return acc + (price * qty);
+            const itemTotal = price * qty;
+            
+            console.log(`Item: ${item.name}, Price: ${price}, Qty: ${qty}, Total: ${itemTotal}`);
+            
+            return acc + itemTotal;
         }, 0);
     }, [cartItems]);
 
     const finalShipping = cartItems.length > 0 ? shippingCost : 0;
     const total = calculatedSubtotal + finalShipping;
 
-    
     const getImageSource = (item) => {
-        
         if (item.userDesign1 && item.userDesign1.trim() !== '') {
             return item.userDesign1;
         }
@@ -47,67 +80,104 @@ const AddToCart = () => {
         if (item.main_image && item.main_image.trim() !== '') {
             return item.main_image;
         }
+        if (item.product_details?.image_url) {
+            return item.product_details.image_url;
+        }
         if (!item.isEdited && item.designData?.[1]?.elements?.[0]?.src) {
             return item.designData[1].elements[0].src;
         }
         return 'https://via.placeholder.com/150?text=No+Image';
     };
 
- const handlePayment = async () => {
-    if (!formData.firstName || !formData.email || !formData.address) {
-        alert("Please fill in shipping details");
-        return;
-    }
+    const handlePayment = async () => {
+        if (!formData.firstName || !formData.email || !formData.address) {
+            alert("Please fill in shipping details");
+            return;
+        }
 
-    setLoading(true);
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2b3BtdGFib2d2Z3JwdGlwaXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Nzc1MDgsImV4cCI6MjA4NzE1MzUwOH0.s4DzQX6iG3-bkD_SqBuCOdGN4X7O1hO53J4hd-MfV9U"; 
+        setLoading(true);
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2b3BtdGFib2d2Z3JwdGlwaXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Nzc1MDgsImV4cCI6MjA4NzE1MzUwOH0.s4DzQX6iG3-bkD_SqBuCOdGN4X7O1hO53J4hd-MfV9U";
 
-    try {
-        const response = await fetch('https://ivopmtabogvgrptipiwo.supabase.co/functions/v1/stripe-checkout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-                items: cartItems.map(it => ({
+        try {
+            const itemsForPayment = cartItems.map(it => {
+                let price = parseFloat(it.price);
+                
+                if (isNaN(price) || price === 0) {
+                    if (it.product_details?.price) {
+                        price = parseFloat(it.product_details.price);
+                    }
+                }
+                
+                if (isNaN(price) || price === 0) {
+                    price = 600; // Default price
+                }
+                
+                return {
                     id: it.id,
                     name: it.name,
-                    price: it.price,
-                    quantity: it.quantity,
+                    price: price,
+                    quantity: parseInt(it.quantity) || 1,
                     isEdited: it.isEdited || false,
-                    userDesign1: it.userDesign1 || it.image || '',
+                    userDesign1: it.userDesign1 || it.image || it.image_url || '',
                     userDesign2: it.userDesign2 || '',
                     userDesign3: it.userDesign3 || '',
                     userDesign4: it.userDesign4 || ''
-                })),
-                email: formData.email,
-                firstName: formData.firstName
-            })
-        });
+                };
+            });
 
-        const data = await response.json();
-        
-        if (data.url) {
-            const orderData = {
-                items: cartItems,
-                firstName: formData.firstName,
-                address: formData.address
-            };
-            localStorage.setItem('pendingOrder', JSON.stringify(orderData));
-            
-            window.location.href = data.url;
-        } else {
-            alert("Error: " + (data.error || "Payment initialization failed."));
+            console.log('Sending to payment:', itemsForPayment);
+
+            const response = await fetch('https://ivopmtabogvgrptipiwo.supabase.co/functions/v1/stripe-checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    items: itemsForPayment,
+                    email: formData.email,
+                    firstName: formData.firstName
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.url) {
+                const orderData = {
+                    items: cartItems,
+                    firstName: formData.firstName,
+                    address: formData.address
+                };
+                localStorage.setItem('pendingOrder', JSON.stringify(orderData));
+                window.location.href = data.url;
+            } else {
+                alert("Error: " + (data.error || "Payment initialization failed."));
+            }
+        } catch (err) {
+            console.error("Payment failed:", err);
+            alert("Server error, please try again.");
+        } finally {
+            setLoading(false);
         }
-    } catch (err) {
-        console.error("Payment failed:", err);
-        alert("Server error, please try again.");
-    } finally {
-        setLoading(false);
-    }
-};
+    };
+
+    const getItemPrice = (item) => {
+        let price = parseFloat(item.price);
+        
+        if (isNaN(price) || price === 0) {
+            if (item.product_details?.price) {
+                price = parseFloat(item.product_details.price);
+            }
+        }
+        
+        if (isNaN(price) || price === 0) {
+            price = 600;
+        }
+        
+        return price;
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             <UserNavbar />
@@ -135,7 +205,13 @@ const AddToCart = () => {
                                     <input type="tel" name="phone" placeholder="300 1234567" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-3 rounded-r-xl border border-slate-200 outline-none focus:border-rose-500" />
                                 </div>
                             </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                                <input type="text" name="city" placeholder="City*" value={formData.city} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-rose-500" />
+                                <input type="text" name="state" placeholder="State*" value={formData.state} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-rose-500" />
+                                <input type="number" name="zipCode" placeholder="Zip Code*" value={formData.zipCode} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-rose-500" />
+                            </div>
                             <textarea name="address" placeholder="Full Address*" value={formData.address} onChange={handleInputChange} rows="3" className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-rose-500 resize-none"></textarea>
+                            <textarea name="description" placeholder="Description*" value={formData.description} onChange={handleInputChange} rows="2" className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-rose-500 resize-none"></textarea>
                         </div>
                     </div>
 
@@ -143,57 +219,59 @@ const AddToCart = () => {
                         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                             <h3 className="text-xl font-bold mb-6 text-slate-900">Your Cart ({cartItems.length})</h3>
                             <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto">
-                                {cartItems.map((item) => (
-                                    <div key={item.id} className="p-4 border border-slate-100 rounded-2xl bg-slate-50/30">
-                                        <div className="flex gap-4">
-                                            <div className="w-16 h-16 bg-white rounded-xl overflow-hidden border border-slate-200 flex-shrink-0">
-                                                <img
-                                                    src={getImageSource(item)}
-                                                    alt={item.name}
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => { 
-                                                        console.log("Image error for:", item.name);
-                                                        e.target.src = 'https://via.placeholder.com/150?text=No+Image'; 
-                                                    }}
-                                                />
-                                            
-                                                {item.isEdited && (
-                                                    <span className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">
-                                                        Edited
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between">
-                                                    <p className="font-bold text-slate-800 text-sm truncate uppercase">{item.name}</p>
-                                                    <button onClick={() => removeFromCart(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
+                                {cartItems.map((item) => {
+                                    const itemPrice = getItemPrice(item);
+                                    return (
+                                        <div key={item.id} className="p-4 border border-slate-100 rounded-2xl bg-slate-50/30">
+                                            <div className="flex gap-4">
+                                                <div className="w-16 h-16 bg-white rounded-xl overflow-hidden border border-slate-200 flex-shrink-0 relative">
+                                                    <img
+                                                        src={getImageSource(item)}
+                                                        alt={item.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            console.log("Image error for:", item.name);
+                                                            e.target.src = 'https://via.placeholder.com/150?text=No+Image';
+                                                        }}
+                                                    />
+                                                    {item.isEdited && (
+                                                        <span className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">
+                                                            Edited
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <div className="flex justify-between items-center mt-2">
-                                                    <p className="font-bold text-rose-600 text-sm">$ {item.price}</p>
-                                                    <div className="flex items-center border rounded-lg bg-white">
-                                                        <button onClick={() => updateQuantity(item.id, -1)} className="p-1 px-2 hover:bg-slate-100"><Minus size={12} /></button>
-                                                        <span className="text-xs font-bold px-3">{item.quantity}</span>
-                                                        <button onClick={() => updateQuantity(item.id, 1)} className="p-1 px-2 hover:bg-slate-100"><Plus size={12} /></button>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between">
+                                                        <p className="font-bold text-slate-800 text-sm truncate uppercase">{item.name}</p>
+                                                        <button onClick={() => removeFromCart(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
+                                                    </div>
+                                                    <div className="flex justify-between items-center mt-2">
+                                                        <p className="font-bold text-rose-600 text-sm">$ {itemPrice.toFixed(2)}</p>
+                                                        <div className="flex items-center border rounded-lg bg-white">
+                                                            <button onClick={() => updateQuantity(item.id, -1)} className="p-1 px-2 hover:bg-slate-100"><Minus size={12} /></button>
+                                                            <span className="text-xs font-bold px-3">{item.quantity}</span>
+                                                            <button onClick={() => updateQuantity(item.id, 1)} className="p-1 px-2 hover:bg-slate-100"><Plus size={12} /></button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             <div className="pt-4 border-t border-slate-100 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-600">Subtotal</span>
-                                    <span className="font-bold">$ {calculatedSubtotal}</span>
+                                    <span className="font-bold">$ {calculatedSubtotal.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm text-green-600">
                                     <span>Shipping</span>
-                                    <span className="font-bold">$ {finalShipping}</span>
+                                    <span className="font-bold">$ {finalShipping.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between pt-4 border-t mt-2">
                                     <span className="font-bold text-lg">Total</span>
-                                    <span className="font-black text-2xl text-rose-600">$ {total}</span>
+                                    <span className="font-black text-2xl text-rose-600">$ {total.toFixed(2)}</span>
                                 </div>
                                 <button
                                     onClick={handlePayment}
@@ -207,6 +285,8 @@ const AddToCart = () => {
                     </div>
                 </div>
             </div>
+
+            <hr className='text-gray-200 mb-8 mt-4 mx-6 md:mx-12 lg:mx-24' />
             <UserFooter />
         </div>
     );

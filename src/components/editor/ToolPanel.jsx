@@ -57,8 +57,43 @@ const ToolPanel = ({ isAdmin = false }) => {
     handleElementUpdate(selectedEl.id, props);
   };
 
-  const colors = ["#ffffff", "#f87171", "#fbbf24", "#34d399", "#60a5fa", "#c084fc", "#f472b6", "#000000"];
+const colors = [
+  "#000000", 
+  "#FF0000",
+  "#060668", 
+  "#4dec4d", 
+  "#FFFF00", 
+  "#FFA500", 
+  "#800080", 
+  "#FF00FF", 
 
+  "#FFFFFF", 
+  "#F8FAFC", 
+  "#F1F5F9", 
+  "#FAF7F2", 
+  
+  "#FCE7F3", 
+  "#FEF3C7", 
+  "#E0F2FE",
+  "#DCFCE7", 
+  "#F3E8FF", 
+  
+  "#94A3B8", 
+  "#A78BFA", 
+  "#F472B6", 
+  "#60A5FA",
+  "#57947E", 
+  "#C2926B",
+  "#818CF8", 
+  "#9CA3AF", 
+  
+  
+  "#475569", 
+  "#881337", 
+  "#1E293B", 
+  "#334155", 
+  "#0F172A"  
+];
   const stickers = [
     "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Panda/3D/panda_3d.png",
     "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Cat%20face/3D/cat_face_3d.png",
@@ -267,7 +302,7 @@ const ToolPanel = ({ isAdmin = false }) => {
                   />
                 </div>
 
-          
+                
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Text Color</p>
                   <div className="flex items-center gap-3">

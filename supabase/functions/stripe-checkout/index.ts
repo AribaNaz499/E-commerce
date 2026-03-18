@@ -29,6 +29,15 @@ serve(async (req: Request) => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       customer_email: email,
+      shipping_options: [
+    {
+      shipping_rate_data: {
+        type: 'fixed_amount',
+        fixed_amount: { amount: 200, currency: 'usd' }, 
+        display_name: 'Standard Shipping',
+      },
+    },
+  ],
       line_items,
       mode: 'payment',
       success_url: `${req.headers.get('origin')}/success?session_id={CHECKOUT_SESSION_ID}&first_name=${encodeURIComponent(firstName)}`,

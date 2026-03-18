@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'; 
 import BackgroundImg from '../../assets/images/bg.jpg';
 import PosterImg from '../../assets/images/poster.jpg';
 import Logos from '../../assets/images/logos.jpg';
@@ -125,7 +125,7 @@ const UserHome = () => {
                                                 onClick={() => addToCart({
                                                     id: product.id,
                                                     name: product.name,
-                                                    price: product.price || 600,
+                                                    price: product.price, 
                                                     quantity: 1,
                                                     image: product.image_url,
                                                     userDesign1: product.image_url,
@@ -151,6 +151,7 @@ const UserHome = () => {
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="font-bold text-base md:text-lg text-gray-800 line-clamp-1">{product.name}</p>
+                                                <p className="text-sm font-bold text-rose-600 mt-1">${parseFloat(product.price) || 0}</p> {/* Show price */}
                                                 <span className="inline-block mt-1 bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                                                     {product.category || "General"}
                                                 </span>
@@ -163,7 +164,18 @@ const UserHome = () => {
 
                                         <div className="mt-4 flex flex-col gap-2 md:hidden">
                                             <button
-                                                onClick={() => addToCart(product)}
+                                                onClick={() => addToCart({
+                                                    id: product.id,
+                                                    name: product.name,
+                                                    price: product.price,
+                                                    quantity: 1,
+                                                    image: product.image_url,
+                                                    userDesign1: product.image_url,
+                                                    userDesign2: '',
+                                                    userDesign3: '',
+                                                    userDesign4: '',
+                                                    isEdited: false,
+                                                })}
                                                 className="w-full bg-rose-950 text-white text-sm font-bold py-2.5 rounded-lg active:scale-95 transition-transform">
                                                 Add to Cart
                                             </button>

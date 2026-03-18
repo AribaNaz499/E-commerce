@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { supabase } from './config/supabaseClient'
 import { CanvasProvider } from './context/CanvasContext'
-import { CartProvider } from './context/CartContext' 
+import { CartProvider } from './context/CartContext'
 
 import Auth from './components/pages/Auth'
 import Dashboard from './components/pages/Dashboard'
@@ -17,16 +17,26 @@ import UserEditDesign from './components/pages/UserEditDesign'
 import CardPreview from './components/pages/CardPreview'
 import AddToCart from './components/pages/AddToCart'
 import Contact from './components/pages/Contact'
-import Success from './components/pages/Success' 
+import Success from './components/pages/Success'
+
+const LoadingScreen = () => (
+  <div className="h-screen flex items-center justify-center bg-white">
+    <div className="text-center">
+      <div className="text-2xl mb-2">🐼</div>
+      <div className="text-[#990033] font-medium">MoonPanda</div>
+      <div className="text-xs text-gray-400 mt-2">Loading...</div>
+    </div>
+  </div>
+);
 
 const LayoutManager = ({ children, role }) => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith("/admin-portal");
-  const isEditorPage = location.pathname.includes("/add-product") || location.pathname.includes("/edit/");
+  const isEditorPage =
+    location.pathname.includes("/add-product") ||
+    location.pathname.includes("/edit/");
 
-  if (isAdminPath && role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
+  if (isAdminPath && role !== 'admin') return <Navigate to="/" replace />;
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden ${isAdminPath ? 'bg-gray-50' : 'bg-white'}`}>
@@ -39,92 +49,119 @@ const LayoutManager = ({ children, role }) => {
 };
 
 const App = () => {
+  const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchRole(session.user.id);
-      else setLoading(false);
-    });
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchRole(session.user.id);
-      else {
+    const init = async () => {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (s?.user?.id) {
+          setSession(s);
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', s.user.id)
+            .single();
+          const fetchedRole = profile?.role || 'user';
+          sessionStorage.setItem('mp-role', fetchedRole);
+          if (mounted) setRole(fetchedRole);
+        } else {
+          setSession(null);
+          setRole(null);
+        }
+      } catch (_) {}
+
+      if (mounted) setLoading(false);
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
+      if (event === 'SIGNED_OUT') {
+        sessionStorage.clear();
+        setSession(null);
         setRole(null);
-        setLoading(false);
+        if (window.location.pathname !== '/') {
+          window.location.replace('/');
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchRole = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      setRole(data?.role);
-    } catch (err) {
-      console.error("Error fetching role:", err);
-      setRole('user');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center font-bold text-blue-600">
-      MoonPanda Setup Loading...
-    </div>
-  );
+  if (loading) return <LoadingScreen />;
 
   return (
     <Router>
-      <CartProvider> 
+      <CartProvider>
         <CanvasProvider>
-          {!session ? (
-            <Auth />
-          ) : (
-            <LayoutManager role={role}>
-              <Routes>
-                <Route
-                  path="/"
-                  element={role === 'admin' ? <Navigate to="/admin-portal" replace /> : <UserHome />}
-                />
+          <Routes>
+            <Route path="/" element={
+              session
+                ? <Navigate to={role === 'admin' ? '/admin-portal' : '/user-home'} replace />
+                : <Auth />
+            } />
+            <Route path="/auth" element={
+              session
+                ? <Navigate to={role === 'admin' ? '/admin-portal' : '/user-home'} replace />
+                : <Auth />
+            } />
 
-                <Route path="/all-designs" element={<AllDesigns />} />
-                <Route path="/category/:categoryName" element={<CategoryPage />} />
-                <Route path="/design-editor/:id" element={<UserEditDesign />} />
-                <Route path="/card-preview" element={<CardPreview />} />
-                <Route path="/cart" element={<AddToCart/>} />
-                <Route path="/contact" element={<Contact/>}/>
-                <Route path="/success" element={<Success />} />
+            <Route path="/user-home" element={
+              session ? <LayoutManager role={role}><UserHome /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/all-designs" element={
+              session ? <LayoutManager role={role}><AllDesigns /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/category/:categoryName" element={
+              session ? <LayoutManager role={role}><CategoryPage /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/design-editor/:id" element={
+              session ? <LayoutManager role={role}><UserEditDesign /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/card-preview" element={
+              session ? <LayoutManager role={role}><CardPreview /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/cart" element={
+              session ? <LayoutManager role={role}><AddToCart /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/contact" element={
+              session ? <LayoutManager role={role}><Contact /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/success" element={
+              session ? <LayoutManager role={role}><Success /></LayoutManager> : <Navigate to="/" replace />
+            } />
 
-                {role === 'admin' && (
-                  <>
-                    <Route path="/admin-portal" element={<Dashboard />} />
-                    <Route path="/admin-portal/all-products" element={<AllProducts />} />
-                    <Route path="/admin-portal/add-product" element={<AddProduct />} />
-                    <Route path="/admin-portal/edit/:id" element={<EditProduct />} />
-                  </>
-                )}
+            <Route path="/admin-portal" element={
+              session ? <LayoutManager role={role}><Dashboard /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/admin-portal/all-products" element={
+              session ? <LayoutManager role={role}><AllProducts /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/admin-portal/add-product" element={
+              session ? <LayoutManager role={role}><AddProduct /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/admin-portal/edit/:id" element={
+              session ? <LayoutManager role={role}><EditProduct /></LayoutManager> : <Navigate to="/" replace />
+            } />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </LayoutManager>
-          )}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </CanvasProvider>
       </CartProvider>
     </Router>
-  )
-}
+  );
+};
 
 export default App;
