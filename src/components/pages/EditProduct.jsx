@@ -25,7 +25,7 @@ const EditProduct = () => {
 
   const [designName, setDesignName] = useState("");
   const [category, setCategory] = useState("Posters");
-  const [price, setPrice] = useState(""); // Naya Price State
+  const [price, setPrice] = useState(""); 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 

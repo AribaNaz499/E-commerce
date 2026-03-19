@@ -57,43 +57,43 @@ const ToolPanel = ({ isAdmin = false }) => {
     handleElementUpdate(selectedEl.id, props);
   };
 
-const colors = [
-  "#000000", 
-  "#FF0000",
-  "#060668", 
-  "#4dec4d", 
-  "#FFFF00", 
-  "#FFA500", 
-  "#800080", 
-  "#FF00FF", 
+  const colors = [
+    "#000000",
+    "#FF0000",
+    "#060668",
+    "#4dec4d",
+    "#FFFF00",
+    "#FFA500",
+    "#800080",
+    "#FF00FF",
 
-  "#FFFFFF", 
-  "#F8FAFC", 
-  "#F1F5F9", 
-  "#FAF7F2", 
-  
-  "#FCE7F3", 
-  "#FEF3C7", 
-  "#E0F2FE",
-  "#DCFCE7", 
-  "#F3E8FF", 
-  
-  "#94A3B8", 
-  "#A78BFA", 
-  "#F472B6", 
-  "#60A5FA",
-  "#57947E", 
-  "#C2926B",
-  "#818CF8", 
-  "#9CA3AF", 
-  
-  
-  "#475569", 
-  "#881337", 
-  "#1E293B", 
-  "#334155", 
-  "#0F172A"  
-];
+    "#FFFFFF",
+    "#F8FAFC",
+    "#F1F5F9",
+    "#FAF7F2",
+
+    "#FCE7F3",
+    "#FEF3C7",
+    "#E0F2FE",
+    "#DCFCE7",
+    "#F3E8FF",
+
+    "#94A3B8",
+    "#A78BFA",
+    "#F472B6",
+    "#60A5FA",
+    "#57947E",
+    "#C2926B",
+    "#818CF8",
+    "#9CA3AF",
+
+
+    "#475569",
+    "#881337",
+    "#1E293B",
+    "#334155",
+    "#0F172A"
+  ];
   const stickers = [
     "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Panda/3D/panda_3d.png",
     "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Cat%20face/3D/cat_face_3d.png",
@@ -124,8 +124,8 @@ const colors = [
       onClick={onClick}
       title={title}
       className={`w-10 h-10 rounded-xl border-2 font-bold text-sm transition-all ${active
-          ? 'bg-purple-600 border-purple-600 text-white'
-          : 'bg-white border-gray-200 text-gray-700 hover:border-purple-400'
+        ? 'bg-purple-600 border-purple-600 text-white'
+        : 'bg-white border-gray-200 text-gray-700 hover:border-purple-400'
         }`}
     >
       {children}
@@ -145,8 +145,8 @@ const colors = [
                   <button
                     onClick={() => setOrientation("portrait")}
                     className={`flex-1 py-3 rounded-xl border-2 flex items-center justify-center gap-2 ${orientation === "portrait"
-                        ? "border-purple-600 bg-purple-50 text-purple-600"
-                        : "border-gray-200 hover:border-purple-300"
+                      ? "border-purple-600 bg-purple-50 text-purple-600"
+                      : "border-gray-200 hover:border-purple-300"
                       }`}
                   >
                     <Smartphone size={20} />
@@ -155,8 +155,8 @@ const colors = [
                   <button
                     onClick={() => setOrientation("landscape")}
                     className={`flex-1 py-3 rounded-xl border-2 flex items-center justify-center gap-2 ${orientation === "landscape"
-                        ? "border-purple-600 bg-purple-50 text-purple-600"
-                        : "border-gray-200 hover:border-purple-300"
+                      ? "border-purple-600 bg-purple-50 text-purple-600"
+                      : "border-gray-200 hover:border-purple-300"
                       }`}
                   >
                     <Monitor size={20} />
@@ -237,26 +237,39 @@ const colors = [
                 </div>
 
 
+
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Style</p>
                   <div className="flex gap-2">
                     <StyleBtn
-                      active={selectedEl.fontStyle === 'bold'}
-                      onClick={() => updateText({ fontStyle: selectedEl.fontStyle === 'bold' ? 'normal' : 'bold' })}
+                      active={selectedEl.fontStyle?.includes('bold')}
+                      onClick={() => {
+                        const current = selectedEl.fontStyle || '';
+                        const hasBold = current.includes('bold');
+                        const hasItalic = current.includes('italic');
+                        updateText({ fontStyle: hasBold ? (hasItalic ? 'italic' : 'normal') : (hasItalic ? 'bold italic' : 'bold') });
+                      }}
                       title="Bold"
                     >
                       <span style={{ fontWeight: 'bold' }}>B</span>
                     </StyleBtn>
+
                     <StyleBtn
-                      active={selectedEl.fontStyle === 'italic'}
-                      onClick={() => updateText({ fontStyle: selectedEl.fontStyle === 'italic' ? 'normal' : 'italic' })}
+                      active={selectedEl.fontStyle?.includes('italic')}
+                      onClick={() => {
+                        const current = selectedEl.fontStyle || '';
+                        const hasBold = current.includes('bold');
+                        const hasItalic = current.includes('italic');
+                        updateText({ fontStyle: hasItalic ? (hasBold ? 'bold' : 'normal') : (hasBold ? 'bold italic' : 'italic') });
+                      }}
                       title="Italic"
                     >
                       <span style={{ fontStyle: 'italic' }}>I</span>
                     </StyleBtn>
+
                     <StyleBtn
                       active={selectedEl.textDecoration === 'underline'}
-                      onClick={() => updateText({ textDecoration: selectedEl.textDecoration === 'underline' ? '' : 'underline' })}
+                      onClick={() => updateText({ textDecoration: selectedEl.textDecoration === 'underline' ? 'normal' : 'underline' })}
                       title="Underline"
                     >
                       <span style={{ textDecoration: 'underline' }}>U</span>
@@ -302,7 +315,22 @@ const colors = [
                   />
                 </div>
 
-                
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Letter Spacing — <span className="font-bold text-purple-600">{(selectedEl.letterSpacing || 0).toFixed(1)}</span>px
+                  </p>
+                  <input
+                    type="range"
+                    min="-5"
+                    max="20"
+                    step="0.5"
+                    value={selectedEl.letterSpacing || 0}
+                    onChange={(e) => updateText({ letterSpacing: parseFloat(e.target.value) })}
+                    className="w-full accent-purple-600"
+                  />
+                </div>
+
+
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Text Color</p>
                   <div className="flex items-center gap-3">

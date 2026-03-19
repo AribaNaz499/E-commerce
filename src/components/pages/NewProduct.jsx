@@ -117,7 +117,7 @@ const NewProduct = () => {
             name: designName,
             content: designContent,
             category: category,
-            price: price, // Price database mein save hogi
+            price: price, 
             image_url: previewDataURL || 'https://placehold.co/400x600?text=No+Preview',
             created_at: new Date().toISOString()
           }

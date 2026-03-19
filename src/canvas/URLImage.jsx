@@ -1,86 +1,64 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Image as KonvaImage, Group, Rect, Text } from 'react-konva';
 
-const URLImage = ({ el, isSelected, onSelect, onChange }) => {
+const URLImage = ({ el, isSelected, onSelect, onChange, onDragStart, onDragMove, onDragEnd }) => {
   const shapeRef = useRef();
   const [imageObj, setImageObj] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCropping, setIsCropping] = useState(false);
 
-  const resolveImagePath = (src) => {
-    if (!src) return src;
+  useEffect(() => {
+    if (!el?.src) {
+      setImageError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setImageError(false);
+
+    const img = new window.Image();
     
-    if (src.startsWith('http') || src.startsWith('data:')) {
-      return src;
+    let imageSrc = el.src;
+    if (el.isLogo) {
+      imageSrc = '/assets/logo.png';
+    } else {
+      if (imageSrc.includes('/assets/images/')) {
+        imageSrc = imageSrc.replace('/images', '');
+      }
     }
     
-    if (src.startsWith('/assets/')) {
-      return src; 
+    if (typeof imageSrc === 'string' && imageSrc.startsWith('http')) {
+      img.crossOrigin = "anonymous";
     }
-    
-    if (src.includes('/src/assets/')) {
-      return src.replace('/src', ''); 
-    }
-    
-    return src;
-  };
 
-useEffect(() => {
-  if (!el?.src) {
-    setImageError(true);
-    setIsLoading(false);
-    return;
-  }
+    img.src = imageSrc;
 
-  setIsLoading(true);
-  setImageError(false);
+    img.onload = () => {
+      setImageObj(img);
+      setIsLoading(false);
+      if (!el.crop || el.crop.width === 0) {
+        onChange({
+          ...el,
+          originalWidth: img.width,
+          originalHeight: img.height,
+          crop: { x: 0, y: 0, width: img.width, height: img.height },
+        });
+      }
+    };
 
-  const img = new window.Image();
-  
-  let imageSrc = el.src;
-  if (el.isLogo) {
-    
-    imageSrc = '/assets/logo.png';
-  } else {
-    
-    if (imageSrc.includes('/assets/images/')) {
-      imageSrc = imageSrc.replace('/images', '');
-    }
-  }
-  
-  if (typeof imageSrc === 'string' && imageSrc.startsWith('http')) {
-    img.crossOrigin = "anonymous";
-  }
+    img.onerror = (err) => {
+      console.error("❌ Image Load Failed:", imageSrc, err);
+      setImageError(true);
+      setIsLoading(false);
+    };
 
-  img.src = imageSrc;
-
-  img.onload = () => {
-    console.log("✅ Logo loaded successfully from:", imageSrc);
-    setImageObj(img);
-    setIsLoading(false);
-    
-    if (!el.crop || el.crop.width === 0) {
-      onChange({
-        ...el,
-        originalWidth: img.width,
-        originalHeight: img.height,
-        crop: { x: 0, y: 0, width: img.width, height: img.height },
-      });
-    }
-  };
-
-  img.onerror = (err) => {
-    console.error("❌ Image Load Failed:", imageSrc, err);
-    setImageError(true);
-    setIsLoading(false);
-  };
-
-  return () => {
-    img.onload = null;
-    img.onerror = null;
-  };
-}, [el?.src]);
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [el?.src]);
 
   const handleDoubleClick = (e) => {
     if (el.isFixed) return;
@@ -92,8 +70,6 @@ useEffect(() => {
     const node = shapeRef.current;
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
-    
-    
     node.scaleX(1);
     node.scaleY(1);
 
@@ -103,29 +79,19 @@ useEffect(() => {
     if (isCropping) {
       const dx = node.x() - el.x;
       const dy = node.y() - el.y;
-
-    
       const cropX = el.crop.x + (dx * (el.crop.width / el.width));
       const cropY = el.crop.y + (dy * (el.crop.height / el.height));
-      
       const cropWidth = el.crop.width * scaleX;
       const cropHeight = el.crop.height * scaleY;
-
       onChange({
         ...el,
         x: node.x(),
         y: node.y(),
         width: newWidth,
         height: newHeight,
-        crop: {
-          x: cropX,
-          y: cropY,
-          width: cropWidth,
-          height: cropHeight,
-        }
+        crop: { x: cropX, y: cropY, width: cropWidth, height: cropHeight }
       });
     } else {
-      
       onChange({
         ...el,
         x: node.x(),
@@ -139,6 +105,7 @@ useEffect(() => {
 
   const handleDragEnd = (e) => {
     onChange({ ...el, x: e.target.x(), y: e.target.y() });
+    onDragEnd?.(e); // ✅ parent ka clearGuidelines call hoga
   };
 
   const applyCrop = (e) => {
@@ -165,23 +132,26 @@ useEffect(() => {
         onClick={onSelect}
         onTap={onSelect}
         onDblClick={handleDoubleClick}
-        onTransformEnd={handleTransformEnd}
+        onDblTap={handleDoubleClick}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
         onDragEnd={handleDragEnd}
+        onTransformEnd={handleTransformEnd}
       />
 
       {isCropping && (
         <Group>
-          <KonvaImage 
-            image={imageObj} 
-            x={el.x} y={el.y} 
-            width={el.width} height={el.height} 
-            opacity={0.2} listening={false} 
+          <KonvaImage
+            image={imageObj}
+            x={el.x} y={el.y}
+            width={el.width} height={el.height}
+            opacity={0.2} listening={false}
           />
-          <Rect 
-            x={el.x} y={el.y} 
-            width={el.width} height={el.height} 
-            stroke="#f59e0b" strokeWidth={2} dash={[4, 4]} 
-            listening={false} 
+          <Rect
+            x={el.x} y={el.y}
+            width={el.width} height={el.height}
+            stroke="#f59e0b" strokeWidth={2} dash={[4, 4]}
+            listening={false}
           />
           <Group x={el.x + el.width/2 - 40} y={el.y + el.height + 10} onClick={applyCrop} onTap={applyCrop}>
             <Rect width={80} height={25} fill="#f59e0b" cornerRadius={5} />

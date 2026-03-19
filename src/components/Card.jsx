@@ -80,7 +80,7 @@ const Cards = () => {
 
     const cardData = [
         {
-            id: 2, // Revenue Card
+            id: 2, 
             title: "Revenue (USD)",
             count: `$${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             subText: "Total sales in Dollars",
@@ -90,7 +90,7 @@ const Cards = () => {
             progress: calculateProgress(stats.totalRevenue, REVENUE_TARGET)
         },
         {
-            id: 3, // Orders Card
+            id: 3, 
             title: "Total Orders",         
             count: stats.totalOrders,         
             subText: "Completed orders",      
@@ -112,7 +112,6 @@ const Cards = () => {
                 </button>
             </div>
 
-            {/* Grid settings kept same (md:grid-cols-3) to maintain card size */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {cardData.map((card) => (
                     <div key={card.id} className={`${card.bg} p-6 rounded-2xl shadow-sm border border-white/50`}>

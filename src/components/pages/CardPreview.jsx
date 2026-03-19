@@ -61,36 +61,24 @@ const CardPreview = () => {
 
     const handleEdit = () => {
         navigate(`/design-editor/${id}`, {
-            state: {
-                fromPreview: true,
-                slidesData: allSlides,
-                orientation,
-                designName,
-                price, 
-                image
-            }
+            state: { fromPreview: true, slidesData: allSlides, orientation, designName, price, image }
         });
     };
 
     const handleCart = async () => {
         if (isCapturing) return;
         setIsCapturing(true);
-
         try {
             await new Promise(r => setTimeout(r, 1500));
-
             const design1 = stageRef1.current?.toDataURL({ pixelRatio: 2 }) || '';
             const design2 = stageRef2.current?.toDataURL({ pixelRatio: 2 }) || '';
             const design3 = stageRef3.current?.toDataURL({ pixelRatio: 2 }) || '';
             const design4 = stageRef4.current?.toDataURL({ pixelRatio: 2 }) || '';
-
             const hasUserEdited = (
                 (allSlides?.[2]?.elements?.length > 0) ||
                 (allSlides?.[3]?.elements?.length > 0)
             );
-
             if (!design1) throw new Error("Front page capture failed");
-
             const cartItem = {
                 id: id || `custom-${Date.now()}`,
                 name: designName || 'Custom Card',
@@ -103,12 +91,8 @@ const CardPreview = () => {
                 userDesign4: design4,
                 isEdited: hasUserEdited,
             };
-
-            console.log("Adding to cart with price:", cartItem.price); 
-
             addToCart(cartItem, false);
             navigate('/cart');
-
         } catch (err) {
             console.error("Cart Error:", err);
             alert("Error capturing designs. Please try again.");
@@ -149,63 +133,44 @@ const CardPreview = () => {
                 </div>
             )}
 
-            <div className="w-full max-w-6xl flex justify-between px-4 mb-4">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-600">
-                    <ArrowLeft size={18} /> Back
+            
+            <div className="w-full max-w-6xl px-4 mb-4 flex items-center gap-3">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-1 text-gray-500 hover:text-gray-800 text-sm font-medium whitespace-nowrap shrink-0"
+                >
+                    <ArrowLeft size={15} /> Back
                 </button>
-                
+
                 {price && (
-                    <div className="flex items-center gap-4">
-                        <div className="text-lg font-bold text-blue-600">
-                            ${parseFloat(price).toFixed(2)}
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handleEdit}
-                                className="bg-gray-100 text-gray-700 px-5 py-2 rounded-xl font-bold flex items-center gap-2 border hover:bg-gray-200"
-                            >
-                                <Edit3 size={18} /> Edit
-                            </button>
-                            <button
-                                onClick={handleCart}
-                                disabled={isCapturing}
-                                className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 disabled:opacity-60"
-                            >
-                                <ShoppingCart size={18} /> Add to Cart
-                            </button>
-                        </div>
-                    </div>
+                    <span className="text-sm font-semibold text-blue-600 whitespace-nowrap shrink-0">
+                        PKR {parseFloat(price).toFixed(2)}
+                    </span>
                 )}
-                
-                {!price && (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleEdit}
-                            className="bg-gray-100 text-gray-700 px-5 py-2 rounded-xl font-bold flex items-center gap-2 border hover:bg-gray-200"
-                        >
-                            <Edit3 size={18} /> Edit
-                        </button>
-                        <button
-                            onClick={handleCart}
-                            disabled={isCapturing}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 disabled:opacity-60"
-                        >
-                            <ShoppingCart size={18} /> Add to Cart
-                        </button>
-                    </div>
-                )}
+
+                <div className="flex-1" />
+
+                <button
+                    onClick={handleEdit}
+                    className="shrink-0 bg-gray-100 text-gray-700 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 border hover:bg-gray-200 text-sm whitespace-nowrap"
+                >
+                    <Edit3 size={14} /> Edit
+                </button>
+                <button
+                    onClick={handleCart}
+                    disabled={isCapturing}
+                    className="shrink-0 bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 disabled:opacity-60 text-sm whitespace-nowrap"
+                >
+                    <ShoppingCart size={14} />
+                    {isCapturing ? 'Adding...' : 'Add to Cart'}
+                </button>
             </div>
 
-            <div className="flex-1 flex items-center justify-center w-full">
-                <div className="bg-white p-4 rounded-2xl shadow-2xl">
+            {/* Canvas */}
+            <div className="flex-1 flex items-center justify-center w-full px-4">
+                <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-2xl">
                     <div style={{ display: currentPage === 1 ? 'block' : 'none' }}>
-                        <Stage
-                            width={previewSize.width}
-                            height={previewSize.height}
-                            scaleX={scale}
-                            scaleY={scale}
-                            ref={stageRef1}
-                        >
+                        <Stage width={previewSize.width} height={previewSize.height} scaleX={scale} scaleY={scale} ref={stageRef1}>
                             <RenderSlideElements slideNum={1} />
                         </Stage>
                     </div>
@@ -227,14 +192,7 @@ const CardPreview = () => {
                         </div>
 
                         {!isMobile && (
-                            <div
-                                style={{
-                                    width: '1px',
-                                    height: insideSize.height,
-                                    backgroundColor: '#727272',
-                                    alignSelf: 'start'
-                                }}
-                            />
+                            <div style={{ width: '1px', height: insideSize.height, backgroundColor: '#727272', alignSelf: 'start' }} />
                         )}
 
                         <div className="relative">
@@ -249,27 +207,21 @@ const CardPreview = () => {
                             </Stage>
                         </div>
                     </div>
-                    
+
                     <div style={{ display: currentPage === 3 ? 'block' : 'none' }}>
-                        <Stage
-                            width={previewSize.width}
-                            height={previewSize.height}
-                            scaleX={scale}
-                            scaleY={scale}
-                            ref={stageRef4}
-                        >
+                        <Stage width={previewSize.width} height={previewSize.height} scaleX={scale} scaleY={scale} ref={stageRef4}>
                             <RenderSlideElements slideNum={4} />
                         </Stage>
                     </div>
                 </div>
             </div>
 
-            <div className="fixed bottom-6 flex gap-4 bg-white p-2 rounded-2xl shadow-lg border">
+            <div className="fixed bottom-6 flex gap-2 sm:gap-4 bg-white p-2 rounded-2xl shadow-lg border">
                 {[1, 2, 3].map(num => (
                     <button
                         key={num}
                         onClick={() => setCurrentPage(num)}
-                        className={`px-6 py-2 rounded-xl font-bold ${currentPage === num ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                        className={`px-4 sm:px-6 py-2 rounded-xl font-bold text-sm ${currentPage === num ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
                     >
                         {num === 1 ? 'Front' : num === 2 ? 'Inside' : 'Back'}
                     </button>

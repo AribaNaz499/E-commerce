@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Image, Group, Transformer, Rect, Text } from "react-konva";
 
-const CanvasVideo = ({ el, isSelected, onSelect, onChange }) => {
+const CanvasVideo = ({ el, isSelected, onSelect, onChange, onDragStart, onDragMove, onDragEnd }) => {
   const shapeRef = useRef(null);
   const trRef = useRef(null);
   const [videoElement, setVideoElement] = useState(null);
@@ -12,9 +12,9 @@ const CanvasVideo = ({ el, isSelected, onSelect, onChange }) => {
     vid.src = el.src;
     vid.crossOrigin = "Anonymous";
     vid.loop = true;
-    vid.muted = false; 
+    vid.muted = false;
     vid.playsInline = true;
-    
+
     vid.addEventListener("canplay", () => {
       setVideoElement(vid);
       const step = () => {
@@ -33,9 +33,8 @@ const CanvasVideo = ({ el, isSelected, onSelect, onChange }) => {
   }, [isSelected]);
 
   const togglePlay = (e) => {
-    if (e) e.cancelBubble = true; 
+    if (e) e.cancelBubble = true;
     if (!videoElement) return;
-
     if (videoElement.paused) {
       videoElement.play();
       setIsPlaying(true);
@@ -57,17 +56,18 @@ const CanvasVideo = ({ el, isSelected, onSelect, onChange }) => {
         draggable={isSelected}
         onClick={onSelect}
         onTap={onSelect}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
         onDragEnd={(e) => {
           onChange({ ...el, x: e.target.x(), y: e.target.y() });
+          onDragEnd?.(e);
         }}
         onTransformEnd={() => {
           const node = shapeRef.current;
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
-          
           node.scaleX(1);
           node.scaleY(1);
-          
           onChange({
             ...el,
             x: node.x(),
@@ -85,12 +85,11 @@ const CanvasVideo = ({ el, isSelected, onSelect, onChange }) => {
           fill="#000"
           cornerRadius={8}
         />
-        
-        
-        <Group 
-          x={el.width / 2 - 25} 
-          y={el.height / 2 - 25} 
-          onClick={togglePlay} 
+
+        <Group
+          x={el.width / 2 - 25}
+          y={el.height / 2 - 25}
+          onClick={togglePlay}
           onTap={togglePlay}
         >
           <Rect

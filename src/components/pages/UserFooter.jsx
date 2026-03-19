@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom'; // Yeh line missing thi
+import { NavLink } from 'react-router-dom'; 
 
 const UserFooter = () => {
   return (

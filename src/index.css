@@ -21,7 +21,6 @@
 
 
 
-/* Card Design - Standard CSS approach to avoid name validation errors */
 @utility perspective-2000 {
   perspective: 2000px;
 }

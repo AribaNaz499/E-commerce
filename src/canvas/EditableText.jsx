@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Text as KonvaText, Transformer } from 'react-konva';
 import { Html } from 'react-konva-utils';
 
-const EditableText = ({ el, isSelected, onSelect, onChange, draggable = true }) => {
+const EditableText = ({ el, isSelected, onSelect, onChange, draggable = true, onDragStart, onDragMove, onDragEnd }) => {
   const shapeRef = useRef();
   const trRef = useRef();
   const [isEditing, setIsEditing] = useState(false);
@@ -53,37 +53,39 @@ const EditableText = ({ el, isSelected, onSelect, onChange, draggable = true }) 
 
   return (
     <>
-     <KonvaText
-  ref={shapeRef}
-  {...el}
-  text={el.text}
-  id={el.id}
-  draggable={draggable && !isEditing && !el.isFixed}
-  listening={!el.isFixed}
-  onClick={onSelect}
-  width={el.width || 300} 
-  align={el.align || "left"} 
-  onTap={handleTouchEnd}
-  onDblClick={handleDblClick}
-  onDblTap={handleDblClick}
-  onDragEnd={(e) => onChange({ x: e.target.x(), y: e.target.y() })}
-  onTransformEnd={() => {
-    const node = shapeRef.current;
-    const scaleX = node.scaleX(); 
-
-    
-    node.scaleX(1);
-    node.scaleY(1);
-
-    onChange({
-      x: node.x(),
-      y: node.y(),
-      
-      width: Math.max(5, node.width() * scaleX), 
-      fontSize: Math.max(8, (el.fontSize || 16) * scaleX),
-    });
-  }}
-/>
+      <KonvaText
+        ref={shapeRef}
+        {...el}
+        text={el.text}
+        id={el.id}
+        letterSpacing={el.letterSpacing || 0}
+        draggable={draggable && !isEditing && !el.isFixed}
+        listening={!el.isFixed}
+        onClick={onSelect}
+        width={el.width || 300}
+        align={el.align || "left"}
+        onTap={handleTouchEnd}
+        onDblClick={handleDblClick}
+        onDblTap={handleDblClick}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={(e) => {
+          onChange({ x: e.target.x(), y: e.target.y() });
+          onDragEnd?.(e);
+        }}
+        onTransformEnd={() => {
+          const node = shapeRef.current;
+          const scaleX = node.scaleX();
+          node.scaleX(1);
+          node.scaleY(1);
+          onChange({
+            x: node.x(),
+            y: node.y(),
+            width: Math.max(5, node.width() * scaleX),
+            fontSize: Math.max(8, (el.fontSize || 16) * scaleX),
+          });
+        }}
+      />
 
       {isSelected && !isEditing && (
         <Transformer
@@ -114,11 +116,12 @@ const EditableText = ({ el, isSelected, onSelect, onChange, draggable = true }) 
                 fontSize: `${el.fontSize || 16}px`,
                 fontFamily: el.fontFamily || 'Arial',
                 color: el.fill || '#000000',
-                fontWeight: el.fontStyle === 'bold' ? 'bold' : 'normal',
-                fontStyle: el.fontStyle === 'italic' ? 'italic' : 'normal',
-                textDecoration: el.textDecoration || 'none',
+                fontWeight: el.fontStyle?.includes('bold') ? 'bold' : 'normal',
+                fontStyle: el.fontStyle?.includes('italic') ? 'italic' : 'normal',
+                textDecoration: el.textDecoration === 'underline' ? 'underline' : 'normal',
                 textAlign: el.align || 'left',
                 lineHeight: el.lineHeight || 1.2,
+                letterSpacing: `${el.letterSpacing || 0}px`,
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 border: '2px solid #3b82f6',
                 borderRadius: '4px',

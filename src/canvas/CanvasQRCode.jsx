@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Image } from "react-konva";
 import QRCode from "qrcode";
 
-const CanvasQRCode = ({ el, onSelect, onChange }) => {
+const CanvasQRCode = ({ el, onSelect, onChange, onDragStart, onDragMove, onDragEnd }) => {
   const shapeRef = useRef();
   const [imageNode, setImageNode] = useState(null);
 
@@ -36,20 +36,18 @@ const CanvasQRCode = ({ el, onSelect, onChange }) => {
       draggable
       onClick={onSelect}
       onTap={onSelect}
+      onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={(e) => {
-        onChange({
-          x: e.target.x(),
-          y: e.target.y(),
-        });
+        onChange({ ...el, x: e.target.x(), y: e.target.y() });
+        onDragEnd?.(e);
       }}
       onTransformEnd={() => {
         const node = shapeRef.current;
         const scaleX = node.scaleX();
         const scaleY = node.scaleY();
-
         node.scaleX(1);
         node.scaleY(1);
-
         onChange({
           x: node.x(),
           y: node.y(),

@@ -32,7 +32,6 @@ const AddToCart = () => {
 
     const calculatedSubtotal = useMemo(() => {
         return cartItems.reduce((acc, item) => {
-            // Multiple fallbacks for price
             let price = 0;
             
             if (item.price !== undefined && item.price !== null) {
@@ -109,7 +108,7 @@ const AddToCart = () => {
                 }
                 
                 if (isNaN(price) || price === 0) {
-                    price = 600; // Default price
+                    price = 60; 
                 }
                 
                 return {
