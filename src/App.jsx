@@ -12,6 +12,9 @@ import EditProduct from './components/pages/EditProduct'
 import Sidebar from './components/Sidebar'
 import UserHome from './components/pages/UserHome'
 import AllDesigns from './components/pages/AllDesigns'
+import AdminOrders from './components/pages/AdminOrders'
+import AdminUser from './components/pages/AdminUser'
+import AdminSettings from './components/pages/AdminSettings'
 import CategoryPage from './components/pages/CategoryPage'
 import UserEditDesign from './components/pages/UserEditDesign'
 import CardPreview from './components/pages/CardPreview'
@@ -28,6 +31,12 @@ const LoadingScreen = () => (
     </div>
   </div>
 );
+
+const forceLogout = async () => {
+  await supabase.auth.signOut();
+  sessionStorage.clear();
+  window.location.replace('/');
+};
 
 const LayoutManager = ({ children, role }) => {
   const location = useLocation();
@@ -62,27 +71,35 @@ const App = () => {
         if (!mounted) return;
 
         if (s?.user?.id) {
-          setSession(s);
           const { data: profile } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, is_blocked')
             .eq('id', s.user.id)
             .single();
+
+          if (profile?.is_blocked === true) {
+            await forceLogout();
+            return;
+          }
+
           const fetchedRole = profile?.role || 'user';
           sessionStorage.setItem('mp-role', fetchedRole);
-          if (mounted) setRole(fetchedRole);
+          if (mounted) {
+            setSession(s);
+            setRole(fetchedRole);
+          }
         } else {
           setSession(null);
           setRole(null);
         }
-      } catch (_) {}
+      } catch (_) { }
 
       if (mounted) setLoading(false);
     };
 
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event) => {
       if (!mounted) return;
       if (event === 'SIGNED_OUT') {
         sessionStorage.clear();
@@ -94,9 +111,35 @@ const App = () => {
       }
     });
 
+    const realtimeChannel = supabase
+      .channel('block-status-watch')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+        },
+        async (payload) => {
+          if (!mounted) return;
+
+          const { data: { user } } = await supabase.auth.getUser();
+
+          if (
+            user &&
+            payload.new.id === user.id &&
+            payload.new.is_blocked === true
+          ) {
+            await forceLogout();
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      authSubscription.unsubscribe();
+      supabase.removeChannel(realtimeChannel);
     };
   }, []);
 
@@ -148,6 +191,15 @@ const App = () => {
             } />
             <Route path="/admin-portal/all-products" element={
               session ? <LayoutManager role={role}><AllProducts /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/admin-portal/admin-orders" element={
+              session ? <LayoutManager role={role}><AdminOrders /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/admin-portal/admin-user" element={
+              session ? <LayoutManager role={role}><AdminUser /></LayoutManager> : <Navigate to="/" replace />
+            } />
+            <Route path="/admin-portal/admin-setting" element={
+              session ? <LayoutManager role={role}><AdminSettings /></LayoutManager> : <Navigate to="/" replace />
             } />
             <Route path="/admin-portal/add-product" element={
               session ? <LayoutManager role={role}><AddProduct /></LayoutManager> : <Navigate to="/" replace />

@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ChevronLeft, Loader2, Monitor, Smartphone, Menu } from 'lucide-react';
+import { Save, ChevronLeft, Loader2, Monitor, Smartphone, Menu, Star } from 'lucide-react';
 import { CanvasContext } from "../../context/CanvasContext";
 import { supabase } from "../../config/supabaseClient";
 import ToolPanel from "../editor/ToolPanel";
@@ -26,6 +26,7 @@ const EditProduct = () => {
   const [designName, setDesignName] = useState("");
   const [category, setCategory] = useState("Posters");
   const [price, setPrice] = useState(""); 
+  const [featured, setFeatured] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -43,7 +44,8 @@ const EditProduct = () => {
         if (data) {
           setDesignName(data.name || "Untitled Design");
           setCategory(data.category || "Posters");
-          setPrice(data.price || ""); 
+          setPrice(data.price || "");
+          setFeatured(data.featured || false);
           if (data.content) {
             if (data.content.config?.orientation) setOrientation(data.content.config.orientation);
             setCanvasBg(data.content.canvasBg || "#ffffff");
@@ -97,7 +99,8 @@ const EditProduct = () => {
             config: { orientation, dimensions: publishSize },
           },
           category,
-          price: price, 
+          price: price,
+          featured: featured,
           image_url: previewDataURL,
         })
         .eq("id", id);
@@ -144,6 +147,18 @@ const EditProduct = () => {
             />
           </div>
 
+          <button
+            onClick={() => setFeatured(!featured)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              featured 
+                ? 'bg-orange-500 text-white shadow-md' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Star size={14} fill={featured ? "currentColor" : "none"} />
+            {featured ? "Featured" : "Mark as Featured"}
+          </button>
+
           <div className="flex bg-gray-100 p-1 rounded-lg border">
             <button onClick={() => setOrientation("portrait")} className={`p-2 rounded ${orientation === "portrait" ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}><Smartphone size={14} /></button>
             <button onClick={() => setOrientation("landscape")} className={`p-2 rounded ${orientation === "landscape" ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}><Monitor size={14} /></button>
@@ -180,6 +195,8 @@ const EditProduct = () => {
 
       <LayerPannel />
       <input type="file" ref={imageInputRef} className="hidden" />
+      <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleVideoUpload} />
+      <input type="file" ref={audioInputRef} className="hidden" accept="audio/*" onChange={handleAudioUpload} />
     </div>
   );
 };

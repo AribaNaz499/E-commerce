@@ -104,14 +104,26 @@ export const CartProvider = ({ children }) => {
         }
     };
 
-    const clearCart = async () => {
-        setCartItems([]);
+ const clearCart = async () => {
+    setCartItems([]);
+    
+    localStorage.removeItem('cart'); 
+
+    try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-            await supabase.from('cart').delete().eq('user_id', user.id);
+            const { error } = await supabase
+                .from('cart')
+                .delete()
+                .eq('user_id', user.id);
+            
+            if (error) throw error;
+            console.log("✅ Cart deleted from DB");
         }
-    };
-
+    } catch (err) {
+        console.error("❌ Error clearing cart in DB:", err);
+    }
+};
    
     const subtotal = cartItems.reduce((acc, item) => {
         const price = parseFloat(item.price) || 0;

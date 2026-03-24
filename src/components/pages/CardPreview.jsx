@@ -144,7 +144,7 @@ const CardPreview = () => {
 
                 {price && (
                     <span className="text-sm font-semibold text-blue-600 whitespace-nowrap shrink-0">
-                        PKR {parseFloat(price).toFixed(2)}
+                        ${parseFloat(price).toFixed(2)}
                     </span>
                 )}
 
@@ -166,7 +166,6 @@ const CardPreview = () => {
                 </button>
             </div>
 
-            {/* Canvas */}
             <div className="flex-1 flex items-center justify-center w-full px-4">
                 <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-2xl">
                     <div style={{ display: currentPage === 1 ? 'block' : 'none' }}>

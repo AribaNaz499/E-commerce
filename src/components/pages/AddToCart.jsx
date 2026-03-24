@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, Trash2, Minus, Plus } from 'lucide-react';
+import { ChevronRight, Trash2, Minus, Plus, Tag, Check, X } from 'lucide-react';
 import UserFooter from './UserFooter';
 import UserNavbar from './UserNavbar';
 import { useCart } from '../../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../config/supabaseClient';
 
 const AddToCart = () => {
     const { cartItems, updateQuantity, removeFromCart } = useCart();
@@ -16,24 +17,19 @@ const AddToCart = () => {
         countryCode: 'PAK', city: '', state: '', zipCode: '', address: '', description: '',
     });
 
+    const [promoCode, setPromoCode] = useState('');
+    const [promoLoading, setPromoLoading] = useState(false);
+    const [appliedPromo, setAppliedPromo] = useState(null);
+    const [promoError, setPromoError] = useState('');
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    useEffect(() => {
-        console.log('Cart items in AddToCart:', cartItems.map(item => ({
-            name: item.name,
-            price: item.price,
-            priceType: typeof item.price,
-            quantity: item.quantity
-        })));
-    }, [cartItems]);
-
     const calculatedSubtotal = useMemo(() => {
         return cartItems.reduce((acc, item) => {
             let price = 0;
-            
             if (item.price !== undefined && item.price !== null) {
                 price = parseFloat(item.price);
             } else if (item.product_price) {
@@ -43,48 +39,82 @@ const AddToCart = () => {
             } else {
                 price = 0;
             }
-            
             if (isNaN(price) || price === 0) {
                 if (item.product_details?.price) {
                     price = parseFloat(item.product_details.price);
                 }
             }
-          
-            if (isNaN(price) || price === 0) {
-                price = 600; 
-            }
-            
+            if (isNaN(price) || price === 0) price = 600;
             const qty = parseInt(item.quantity) || 1;
-            const itemTotal = price * qty;
-            
-            console.log(`Item: ${item.name}, Price: ${price}, Qty: ${qty}, Total: ${itemTotal}`);
-            
-            return acc + itemTotal;
+            return acc + (price * qty);
         }, 0);
     }, [cartItems]);
 
+    const discountAmount = appliedPromo
+        ? (calculatedSubtotal * appliedPromo.discount_percent) / 100
+        : 0;
+
     const finalShipping = cartItems.length > 0 ? shippingCost : 0;
-    const total = calculatedSubtotal + finalShipping;
+    const total = calculatedSubtotal - discountAmount + finalShipping;
+
+    const handleApplyPromo = async () => {
+        if (!promoCode.trim()) return;
+        setPromoError('');
+        setPromoLoading(true);
+
+        try {
+            const { data, error } = await supabase
+                .from('promo_codes')
+                .select('*')
+                .eq('code', promoCode.trim().toUpperCase())
+                .eq('is_active', true)
+                .single();
+
+            if (error || !data) {
+                setPromoError('Invalid or inactive promo code');
+                setAppliedPromo(null);
+                return;
+            }
+
+            if (data.expiry_date && new Date(data.expiry_date) < new Date()) {
+                setPromoError('This promo code has expired');
+                setAppliedPromo(null);
+                return;
+            }
+
+            if (data.usage_limit !== null && data.used_count >= data.usage_limit) {
+                setPromoError('This promo code has reached its usage limit');
+                setAppliedPromo(null);
+                return;
+            }
+
+            setAppliedPromo({
+                id: data.id,
+                code: data.code,
+                used_count: data.used_count || 0, 
+                discount_percent: data.discount_percent,
+            });
+            setPromoError('');
+        } catch (err) {
+            setPromoError('Something went wrong. Try again.');
+        } finally {
+            setPromoLoading(false);
+        }
+    };
+
+    const handleRemovePromo = () => {
+        setAppliedPromo(null);
+        setPromoCode('');
+        setPromoError('');
+    };
 
     const getImageSource = (item) => {
-        if (item.userDesign1 && item.userDesign1.trim() !== '') {
-            return item.userDesign1;
-        }
-        if (item.image && item.image.trim() !== '') {
-            return item.image;
-        }
-        if (item.image_url && item.image_url.trim() !== '') {
-            return item.image_url;
-        }
-        if (item.main_image && item.main_image.trim() !== '') {
-            return item.main_image;
-        }
-        if (item.product_details?.image_url) {
-            return item.product_details.image_url;
-        }
-        if (!item.isEdited && item.designData?.[1]?.elements?.[0]?.src) {
-            return item.designData[1].elements[0].src;
-        }
+        if (item.userDesign1 && item.userDesign1.trim() !== '') return item.userDesign1;
+        if (item.image && item.image.trim() !== '') return item.image;
+        if (item.image_url && item.image_url.trim() !== '') return item.image_url;
+        if (item.main_image && item.main_image.trim() !== '') return item.main_image;
+        if (item.product_details?.image_url) return item.product_details.image_url;
+        if (!item.isEdited && item.designData?.[1]?.elements?.[0]?.src) return item.designData[1].elements[0].src;
         return 'https://via.placeholder.com/150?text=No+Image';
     };
 
@@ -100,21 +130,19 @@ const AddToCart = () => {
         try {
             const itemsForPayment = cartItems.map(it => {
                 let price = parseFloat(it.price);
-                
                 if (isNaN(price) || price === 0) {
-                    if (it.product_details?.price) {
-                        price = parseFloat(it.product_details.price);
-                    }
+                    if (it.product_details?.price) price = parseFloat(it.product_details.price);
                 }
-                
-                if (isNaN(price) || price === 0) {
-                    price = 60; 
-                }
-                
+                if (isNaN(price) || price === 0) price = 60;
+
+                const discountedPrice = appliedPromo
+                    ? price - (price * appliedPromo.discount_percent / 100)
+                    : price;
+
                 return {
                     id: it.id,
                     name: it.name,
-                    price: price,
+                    price: parseFloat(discountedPrice.toFixed(2)),
                     quantity: parseInt(it.quantity) || 1,
                     isEdited: it.isEdited || false,
                     userDesign1: it.userDesign1 || it.image || it.image_url || '',
@@ -123,8 +151,6 @@ const AddToCart = () => {
                     userDesign4: it.userDesign4 || ''
                 };
             });
-
-            console.log('Sending to payment:', itemsForPayment);
 
             const response = await fetch('https://ivopmtabogvgrptipiwo.supabase.co/functions/v1/stripe-checkout', {
                 method: 'POST',
@@ -143,9 +169,17 @@ const AddToCart = () => {
             const data = await response.json();
 
             if (data.url) {
+                if (appliedPromo?.id) {
+                    await supabase
+                        .from('promo_codes')
+                        .update({ used_count: (appliedPromo.used_count || 0) + 1 })
+                        .eq('id', appliedPromo.id);
+                }
+
                 const orderData = {
                     items: cartItems,
                     firstName: formData.firstName,
+                    email: formData.email,
                     address: formData.address
                 };
                 localStorage.setItem('pendingOrder', JSON.stringify(orderData));
@@ -163,17 +197,10 @@ const AddToCart = () => {
 
     const getItemPrice = (item) => {
         let price = parseFloat(item.price);
-        
         if (isNaN(price) || price === 0) {
-            if (item.product_details?.price) {
-                price = parseFloat(item.product_details.price);
-            }
+            if (item.product_details?.price) price = parseFloat(item.product_details.price);
         }
-        
-        if (isNaN(price) || price === 0) {
-            price = 600;
-        }
-        
+        if (isNaN(price) || price === 0) price = 600;
         return price;
     };
 
@@ -188,6 +215,7 @@ const AddToCart = () => {
                 </nav>
 
                 <div className="flex flex-col lg:flex-row gap-10">
+                    {/* Left - Form */}
                     <div className="flex-[2] w-full bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-bold mb-8 text-slate-900">Shipping Address</h2>
                         <div className="space-y-6">
@@ -217,6 +245,7 @@ const AddToCart = () => {
                     <div className="flex-1 w-full lg:sticky lg:top-10">
                         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                             <h3 className="text-xl font-bold mb-6 text-slate-900">Your Cart ({cartItems.length})</h3>
+
                             <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto">
                                 {cartItems.map((item) => {
                                     const itemPrice = getItemPrice(item);
@@ -228,15 +257,10 @@ const AddToCart = () => {
                                                         src={getImageSource(item)}
                                                         alt={item.name}
                                                         className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            console.log("Image error for:", item.name);
-                                                            e.target.src = 'https://via.placeholder.com/150?text=No+Image';
-                                                        }}
+                                                        onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Image'; }}
                                                     />
                                                     {item.isEdited && (
-                                                        <span className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">
-                                                            Edited
-                                                        </span>
+                                                        <span className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">Edited</span>
                                                     )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -259,11 +283,57 @@ const AddToCart = () => {
                                 })}
                             </div>
 
+                            <div className="mb-4">
+                                {!appliedPromo ? (
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex gap-2">
+                                            <div className="relative flex-1">
+                                                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Promo code"
+                                                    value={promoCode}
+                                                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-rose-400 text-sm font-mono font-bold"
+                                                />
+                                            </div>
+                                            <button
+                                                onClick={handleApplyPromo}
+                                                disabled={promoLoading || !promoCode.trim()}
+                                                className="px-4 py-2.5 bg-rose-950 text-white rounded-xl text-sm font-bold hover:bg-rose-900 disabled:opacity-50 transition-all"
+                                            >
+                                                {promoLoading ? '...' : 'Apply'}
+                                            </button>
+                                        </div>
+                                        {promoError && (
+                                            <p className="text-red-500 text-xs font-medium">{promoError}</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
+                                        <div className="flex items-center gap-2">
+                                            <Check size={16} className="text-green-600" />
+                                            <span className="text-sm font-bold text-green-700 font-mono">{appliedPromo.code}</span>
+                                            <span className="text-xs text-green-600">— {appliedPromo.discount_percent}% off</span>
+                                        </div>
+                                        <button onClick={handleRemovePromo} className="text-gray-400 hover:text-red-500">
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="pt-4 border-t border-slate-100 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-600">Subtotal</span>
                                     <span className="font-bold">$ {calculatedSubtotal.toFixed(2)}</span>
                                 </div>
+                                {appliedPromo && (
+                                    <div className="flex justify-between text-sm text-green-600">
+                                        <span>Discount ({appliedPromo.discount_percent}%)</span>
+                                        <span className="font-bold">- $ {discountAmount.toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-sm text-green-600">
                                     <span>Shipping</span>
                                     <span className="font-bold">$ {finalShipping.toFixed(2)}</span>
