@@ -191,9 +191,9 @@ const UserHome = () => {
             {!loading && featuredProducts.length > 0 && (
                 <div className="mt-20 text-center px-6">
                     <div className="flex items-center justify-center gap-2 mb-2">
-                        <Flame className="text-orange-500" size={28} />
+                        <Flame className="text-rose-800" size={28} />
                         <h3 className="font-bold text-2xl md:text-3xl text-gray-800">Trending & Best Sellers</h3>
-                        <Star className="text-yellow-500" size={28} />
+                        <Star className="text-rose-800" size={28} />
                     </div>
                     <p className="text-gray-500 text-sm mb-8">Most popular cards and gifts loved by our customers</p>
 
@@ -201,7 +201,7 @@ const UserHome = () => {
                         {featuredProducts.slice(0, 8).map((product) => (
                             <div key={product.id} className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-rose-100 flex flex-col">
                                 <div className="absolute top-3 left-3 z-10 flex gap-2">
-                                    <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                                    <span className="bg-gradient-to-r from-orange-800 to-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
                                         <Flame size={10} /> HOT
                                     </span>
                                 </div>
