@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Plus, Trash2, X, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Loader2, Plus, Trash2, X, ToggleLeft, ToggleRight, Eye, Edit2 } from 'lucide-react';
 import { supabase } from "../../config/supabaseClient";
 
 const AdminSettings = () => {
@@ -7,6 +7,8 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({
     code: '',
     discount_percent: '',
@@ -34,6 +36,69 @@ const AdminSettings = () => {
   useEffect(() => {
     fetchCodes();
   }, []);
+
+  const resetForm = () => {
+    setForm({
+      code: '',
+      discount_percent: '',
+      expiry_date: '',
+      usage_limit: '',
+    });
+    setFormError('');
+    setIsEditMode(false);
+    setEditId(null);
+  };
+
+  const handleEdit = (code) => {
+    setForm({
+      code: code.code,
+      discount_percent: code.discount_percent,
+      expiry_date: code.expiry_date || '',
+      usage_limit: code.usage_limit || '',
+    });
+    setIsEditMode(true);
+    setEditId(code.id);
+    setIsModalOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    setFormError('');
+    if (!form.code.trim()) return setFormError('Code naam zaroori hai');
+    if (!form.discount_percent || Number(form.discount_percent) <= 0 || Number(form.discount_percent) > 100)
+      return setFormError('Discount 1-100 ke beech hona chahiye');
+
+    setActionLoading('edit');
+    try {
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .update({
+          code: form.code.trim().toUpperCase(),
+          discount_percent: Number(form.discount_percent),
+          expiry_date: form.expiry_date || null,
+          usage_limit: form.usage_limit ? Number(form.usage_limit) : null,
+        })
+        .eq('id', editId)
+        .select()
+        .single();
+
+      if (error) {
+        if (error.message.includes('unique')) {
+          setFormError('Yeh code already exist karta hai');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      setCodes(prev => prev.map(c => c.id === editId ? data : c));
+      resetForm();
+      setIsModalOpen(false);
+    } catch (err) {
+      setFormError('Error: ' + err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleAdd = async () => {
     setFormError('');
@@ -66,7 +131,7 @@ const AdminSettings = () => {
       }
 
       setCodes(prev => [data, ...prev]);
-      setForm({ code: '', discount_percent: '', expiry_date: '', usage_limit: '' });
+      resetForm();
       setIsModalOpen(false);
     } catch (err) {
       setFormError('Error: ' + err.message);
@@ -110,6 +175,11 @@ const AdminSettings = () => {
     }
   };
 
+  const handleModalClose = () => {
+    resetForm();
+    setIsModalOpen(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-white">
@@ -128,7 +198,7 @@ const AdminSettings = () => {
             <p className="text-xs sm:text-sm text-gray-400">Promo Codes — Total: {codes.length}</p>
           </div>
           <button
-            onClick={() => { setIsModalOpen(true); setFormError(''); }}
+            onClick={() => { setIsModalOpen(true); resetForm(); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all"
           >
             <Plus size={18} /> Add Code
@@ -201,9 +271,17 @@ const AdminSettings = () => {
                         )}
                       </button>
                       <button
+                        onClick={() => handleEdit(c)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="Edit code"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
                         onClick={() => deleteCode(c.id)}
                         disabled={actionLoading === c.id}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete code"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -254,6 +332,12 @@ const AdminSettings = () => {
                   {c.is_active ? <><ToggleRight size={14} /> Active</> : <><ToggleLeft size={14} /> Inactive</>}
                 </button>
                 <button
+                  onClick={() => handleEdit(c)}
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-md text-xs font-semibold border bg-blue-50 text-blue-600 border-blue-100"
+                >
+                  <Edit2 size={14} /> Edit
+                </button>
+                <button
                   onClick={() => deleteCode(c.id)}
                   disabled={actionLoading === c.id}
                   className="p-2 bg-red-50 text-red-700 rounded-md border border-red-100"
@@ -273,15 +357,17 @@ const AdminSettings = () => {
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-          onClick={() => setIsModalOpen(false)}
+          onClick={handleModalClose}
         >
           <div
             className="bg-white rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center px-6 py-4 border-b">
-              <h3 className="text-lg font-bold text-slate-800">New Promo Code</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+              <h3 className="text-lg font-bold text-slate-800">
+                {isEditMode ? 'Edit Promo Code' : 'New Promo Code'}
+              </h3>
+              <button onClick={handleModalClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
                 <X size={22} />
               </button>
             </div>
@@ -342,14 +428,14 @@ const AdminSettings = () => {
               )}
 
               <button
-                onClick={handleAdd}
-                disabled={actionLoading === 'add'}
+                onClick={isEditMode ? handleUpdate : handleAdd}
+                disabled={actionLoading === 'add' || actionLoading === 'edit'}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all mt-2"
               >
-                {actionLoading === 'add' ? (
+                {actionLoading === 'add' || actionLoading === 'edit' ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
-                  <><Plus size={18} /> Add Code</>
+                  <>{isEditMode ? <Edit2 size={18} /> : <Plus size={18} />} {isEditMode ? 'Update Code' : 'Add Code'}</>
                 )}
               </button>
             </div>
